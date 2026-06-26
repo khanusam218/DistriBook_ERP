@@ -43,6 +43,7 @@ function ProfileModal({ title, form, onChange, onSave, onClose, saving }) {
             <input type="number" min="0" step="any"
               value={form.baseSalary === 0 || form.baseSalary === null || form.baseSalary === undefined || form.baseSalary === '' ? '' : form.baseSalary}
               onChange={e => onChange('baseSalary', e.target.value)}
+              onWheel={e => e.target.blur()}
               placeholder="e.g. 25000" className="db-input" />
           </div>
           <div>
@@ -50,6 +51,7 @@ function ProfileModal({ title, form, onChange, onSave, onClose, saving }) {
             <input type="number" min="0" step="any"
               value={form.otRate === 0 || form.otRate === null || form.otRate === undefined || form.otRate === '' ? '' : form.otRate}
               onChange={e => onChange('otRate', e.target.value)}
+              onWheel={e => e.target.blur()}
               placeholder="e.g. 150" className="db-input" />
           </div>
         </div>
@@ -258,6 +260,7 @@ function LedgerEntryModal({ type, employee, gatePasses, onSave, onClose, saving 
             <div>
               <label className="form-label">OT Hours <span className="req">*</span></label>
               <input type="number" min="0.01" step="0.5" value={hours} onChange={e => setHours(e.target.value)}
+                onWheel={e => e.target.blur()}
                 placeholder="e.g. 8" className="db-input" />
               {hours && parseFloat(hours) > 0 && (
                 <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
@@ -269,6 +272,7 @@ function LedgerEntryModal({ type, employee, gatePasses, onSave, onClose, saving 
             <div>
               <label className="form-label">Amount (Rs) <span className="req">*</span></label>
               <input type="number" min="0.01" step="any" value={amount} onChange={e => setAmount(e.target.value)}
+                onWheel={e => e.target.blur()}
                 placeholder="e.g. 5000" className="db-input" />
             </div>
           )}
