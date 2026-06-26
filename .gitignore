@@ -12,7 +12,6 @@ frontend/.vite/
 *.db-wal
 
 # Environment
-.env
 .env.local
 .env.production
 
