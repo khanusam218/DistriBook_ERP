@@ -1236,19 +1236,21 @@ export default function OGP() {
           </div>
 
           {/* Pieces */}
-          <div>
+          <div style={{position:'relative'}}>
             <label className="form-label" style={{display:'block',marginBottom:4}}>
               Pieces {qItem?.pieces_per_ctn && <span style={{color:'#94a3b8',fontWeight:400,fontSize:'0.7rem'}}>({qItem.pieces_per_ctn}/ctn)</span>}
-              {qCtn && qItem?.pieces_per_ctn && (() => {
-                const ppc = Number(qItem.pieces_per_ctn) || 1; const tp = parseFloat(qCtn) || 0
-                const c = Math.floor(tp / ppc); const p = tp % ppc
-                return <span style={{color:'#4f46e5',fontWeight:600,fontSize:'0.7rem',marginLeft:6}}>{c} CTN{p > 0 ? ` ${p}p` : ''}</span>
-              })()}
             </label>
             <input type="number" value={qCtn || ''} min="0" step="1" placeholder="0"
               onChange={e => { setQCtn(e.target.value); recalcNet(e.target.value, qRate, qDisc) }}
               onWheel={e => e.target.blur()}
               className="db-input" style={{width:'100%'}} />
+            <p style={{position:'absolute',top:'100%',left:0,fontSize:'0.7rem',color:'#4f46e5',marginTop:2,fontWeight:600,whiteSpace:'nowrap'}}>
+              {qCtn && qItem?.pieces_per_ctn ? (() => {
+                const ppc = Number(qItem.pieces_per_ctn) || 1; const tp = parseFloat(qCtn) || 0
+                const c = Math.floor(tp / ppc); const p = tp % ppc
+                return `${c} CTN${p > 0 ? ` ${p}p` : ''}`
+              })() : ''}
+            </p>
           </div>
 
           {/* Rate */}
