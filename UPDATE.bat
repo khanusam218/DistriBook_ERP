@@ -17,21 +17,25 @@ if errorlevel 1 (
 echo [1/4] Fetching latest updates from server...
 cd /d "%~dp0"
 
-:: Save local database files so they are never overwritten by updates
-git stash push --include-untracked -m "db-backup" -- "*.db" >nul 2>&1
-
-git pull origin main
+:: Fetch latest code without merging yet
+git fetch origin main
 if errorlevel 1 (
-    :: Restore databases even if pull failed
-    git stash pop >nul 2>&1
     echo.
     echo ERROR: Could not fetch updates. Check your internet connection.
     pause
     exit /b 1
 )
 
-:: Restore local database files (client data always wins)
-git stash pop >nul 2>&1
+:: Checkout only non-database files from the latest version
+for /f "delims=" %%F in ('git diff --name-only HEAD origin/main') do (
+    echo %%F | findstr /i "\.db$" >nul
+    if errorlevel 1 (
+        git checkout origin/main -- "%%F" >nul 2>&1
+    )
+)
+
+:: Mark branch as up to date
+git merge -X ours origin/main >nul 2>&1
 
 echo.
 echo [2/4] Updating backend packages...
