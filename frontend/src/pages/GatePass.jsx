@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { ExportBar, exportPDF, exportExcel, printTable, h } from '../utils/exportUtils'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
@@ -374,11 +375,11 @@ export default function GatePass() {
 
   const addStaff = async (name, type) => {
     try { await api.post('/gate-passes/staff', { name, type }); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
   const deleteStaff = async (id) => {
     try { await api.delete(`/gate-passes/staff/${id}`); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   // ── Company name ──
@@ -405,7 +406,7 @@ export default function GatePass() {
   // ── Save OGP header ──
 
   const saveOgp = async () => {
-    if (!ogpForm.ogpNumber) { alert('OGP number required'); return }
+    if (!ogpForm.ogpNumber) { toast('OGP number required'); return }
     setOgpSaving(true)
     try {
       const r = await api.post('/gate-passes', {
@@ -422,7 +423,7 @@ export default function GatePass() {
       await loadAll()
       setSuccessOgp(r.data)
     } catch (e) {
-      alert(e.response?.data?.error || 'Error creating OGP')
+      toast(e.response?.data?.error || 'Error creating OGP')
     }
     setOgpSaving(false)
   }
@@ -553,7 +554,7 @@ export default function GatePass() {
     try {
       const r = await api.get(`/gate-passes/${bookingOgp.id}/consolidated`)
       printGpReport(r.data.gatePass || bookingOgp, r.data.items, companyName)
-    } catch { alert('Error loading items') }
+    } catch { toast('Error loading items') }
   }
 
   // ── Bill Delivery Order from booking screen ──
@@ -562,9 +563,9 @@ export default function GatePass() {
     if (!bookingOgp) return
     try {
       const r = await api.get(`/gate-passes/${bookingOgp.id}/bill-data`)
-      if (!r.data.shops.length) { alert('No booking items saved yet — save the booking first'); return }
+      if (!r.data.shops.length) { toast('No booking items saved yet — save the booking first'); return }
       printBillDO(r.data.gatePass, r.data.shops, companyName)
-    } catch { alert('Error loading bill data') }
+    } catch { toast('Error loading bill data') }
   }
 
   // ── List helpers ──
@@ -639,7 +640,7 @@ export default function GatePass() {
   const delGp = async (id) => {
     if (!confirm('Delete this gate pass? Stock quantities will be restored.')) return
     try { await api.delete(`/gate-passes/${id}`); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   const openPrint = async (id) => {
@@ -686,7 +687,7 @@ export default function GatePass() {
           {/* OGP Number */}
           <div>
             <label className="form-label">OGP Number *</label>
-            <input type="number" value={ogpForm.ogpNumber || ''} autoFocus
+            <input type="number" onWheel={e => e.target.blur()} value={ogpForm.ogpNumber || ''} autoFocus
               placeholder="Auto-generated"
               onChange={e => setOgpForm(f => ({ ...f, ogpNumber: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && saveOgp()}
@@ -864,7 +865,7 @@ export default function GatePass() {
                           <td style={{ textAlign: 'right', fontWeight: 600 }}>{qty}</td>
                           <td style={{ textAlign: 'right' }}>
                             <input
-                              type="number"
+                              type="number" onWheel={e => e.target.blur()}
                               value={item.rate || ''}
                               onChange={e => updateRate(item.id, e.target.value)}
                               className="db-input"
@@ -877,7 +878,7 @@ export default function GatePass() {
                           <td style={{ textAlign: 'right', color: '#374151' }}>Rs. {amount.toFixed(2)}</td>
                           <td style={{ textAlign: 'right' }}>
                             <input
-                              type="number"
+                              type="number" onWheel={e => e.target.blur()}
                               value={item.returnQty || ''}
                               onChange={e => updateReturnQty(item.id, e.target.value)}
                               className="db-input"
@@ -1008,7 +1009,7 @@ export default function GatePass() {
           {/* Qty Ctn */}
           <div style={{ width: 80 }}>
             <label className="form-label">Ctn</label>
-            <input ref={ctnRef} type="number" value={qCtn || ''} min="0" step="1"
+            <input ref={ctnRef} type="number" onWheel={e => e.target.blur()} value={qCtn || ''} min="0" step="1"
               onChange={e => handleCtnChange(e.target.value)}
               placeholder="0"
               className="db-input" style={{ width: '100%' }} />
@@ -1017,7 +1018,7 @@ export default function GatePass() {
           {/* Qty Pcs */}
           <div style={{ width: 70 }}>
             <label className="form-label">Pcs</label>
-            <input type="number" value={qPcs || ''} min="0" step="1"
+            <input type="number" onWheel={e => e.target.blur()} value={qPcs || ''} min="0" step="1"
               onChange={e => setQPcs(e.target.value)}
               placeholder="0"
               className="db-input" style={{ width: '100%' }} />
@@ -1026,7 +1027,7 @@ export default function GatePass() {
           {/* Rate */}
           <div style={{ width: 90 }}>
             <label className="form-label">Rate</label>
-            <input type="number" value={qRate || ''} min="0" step="0.01"
+            <input type="number" onWheel={e => e.target.blur()} value={qRate || ''} min="0" step="0.01"
               onChange={e => handleRateChange(e.target.value)}
               placeholder="0.00"
               className="db-input" style={{ width: '100%' }} />
@@ -1035,7 +1036,7 @@ export default function GatePass() {
           {/* Amount */}
           <div style={{ width: 100 }}>
             <label className="form-label">Amount</label>
-            <input type="number" value={qAmount || ''} min="0" step="0.01"
+            <input type="number" onWheel={e => e.target.blur()} value={qAmount || ''} min="0" step="0.01"
               onChange={e => setQAmount(e.target.value)}
               placeholder="0.00"
               className="db-input" style={{ width: '100%' }} />
@@ -1044,7 +1045,7 @@ export default function GatePass() {
           {/* Discount */}
           <div style={{ width: 90 }}>
             <label className="form-label">Disc</label>
-            <input type="number" value={qDisc || ''} min="0" step="0.01"
+            <input type="number" onWheel={e => e.target.blur()} value={qDisc || ''} min="0" step="0.01"
               onChange={e => setQDisc(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addLine() }}
               placeholder="0.00"
@@ -1082,7 +1083,7 @@ export default function GatePass() {
                   <td style={{ textAlign: 'center' }}>{item.qty_ctn}</td>
                   <td style={{ textAlign: 'center', color: '#6b7280' }}>{item.qty_pieces || 0}</td>
                   <td>
-                    <input type="number" value={item.rate || ''} min="0" step="0.01"
+                    <input type="number" onWheel={e => e.target.blur()} value={item.rate || ''} min="0" step="0.01"
                       placeholder="0.00"
                       onChange={e => setBookingItems(prev => prev.map((x, j) => j === i
                         ? { ...x, rate: parseFloat(e.target.value) || 0, amount: (parseFloat(e.target.value) || 0) * x.qty_ctn }
@@ -1090,13 +1091,13 @@ export default function GatePass() {
                       className="db-input" style={{ width: 76, textAlign: 'right' }} />
                   </td>
                   <td>
-                    <input type="number" value={item.amount || ''} min="0" step="0.01"
+                    <input type="number" onWheel={e => e.target.blur()} value={item.amount || ''} min="0" step="0.01"
                       placeholder="0.00"
                       onChange={e => setBookingItems(prev => prev.map((x, j) => j === i ? { ...x, amount: parseFloat(e.target.value) || 0 } : x))}
                       className="db-input" style={{ width: 90, textAlign: 'right' }} />
                   </td>
                   <td>
-                    <input type="number" value={item.discount || ''} min="0" step="0.01"
+                    <input type="number" onWheel={e => e.target.blur()} value={item.discount || ''} min="0" step="0.01"
                       placeholder="0.00"
                       onChange={e => setBookingItems(prev => prev.map((x, j) => j === i ? { ...x, discount: parseFloat(e.target.value) || 0 } : x))}
                       className="db-input" style={{ width: 76, textAlign: 'right' }} />

@@ -25,7 +25,7 @@ function Login({ setIsAuthenticated }) {
     setLoginError('')
     setLoginLoading(true)
     try {
-      const res = await api.post('/auth/login', { username: loginUsername, password: loginPassword })
+      const res = await api.post('/auth/login', { username: loginUsername.trim(), password: loginPassword })
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
       setIsAuthenticated(true)
@@ -50,7 +50,7 @@ function Login({ setIsAuthenticated }) {
         businessName: signupBusinessName.trim(),
         fullName: signupFullName.trim(),
         username: signupUsername.trim(),
-        password: signupPassword,
+        password: signupPassword.trim(),
       })
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))

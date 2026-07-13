@@ -11,7 +11,7 @@ function getCustomerBalance(customerId) {
 }
 
 function createVendorLedgerEntry(vendorId, transactionType, referenceId, referenceType, debit, credit, description) {
-  const newBalance = getVendorBalance(vendorId) + credit - debit;
+  const newBalance = getVendorBalance(vendorId) + debit - credit;
   const result = db.prepare(
     `INSERT INTO vendor_ledger (vendor_id, transaction_type, reference_id, reference_type, debit, credit, balance, description)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`

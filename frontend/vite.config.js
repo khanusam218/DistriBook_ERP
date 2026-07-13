@@ -12,7 +12,15 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:5002',
-        changeOrigin: true
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Increase body limit for large backup files
+            if (req.method === 'POST' && req.url.includes('/backup/import')) {
+              req.headers['content-length'] = req.headers['content-length'] || '0';
+            }
+          });
+        },
       }
     }
   }

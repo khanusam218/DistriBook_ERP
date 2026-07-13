@@ -225,7 +225,7 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={Math.max(160, (data.topCustomers || []).length * 52)}>
             <BarChart data={data.topCustomers} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false}
+              <XAxis type="number" onWheel={e => e.target.blur()} tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false}
                 tickFormatter={v => rsShort(v).replace('Rs. ', '')} />
               <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 11, fill: '#334155' }}
                 tickLine={false} axisLine={false}

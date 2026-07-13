@@ -12,6 +12,8 @@ const empty = {
   ntn: '', strn: '',
 }
 
+const emptyDeletePwForm = { currentPassword: '', newPassword: '', confirmPassword: '' }
+
 export default function CompanySettings() {
   const [form, setForm] = useState(empty)
   const [loading, setLoading] = useState(true)
@@ -19,12 +21,64 @@ export default function CompanySettings() {
   const [msg, setMsg] = useState('')
   const [msgType, setMsgType] = useState('success')
 
+  const [deletePwSet, setDeletePwSet] = useState(false)
+  const [deletePwForm, setDeletePwForm] = useState(emptyDeletePwForm)
+  const [deletePwSaving, setDeletePwSaving] = useState(false)
+  const [deletePwMsg, setDeletePwMsg] = useState('')
+  const [deletePwMsgType, setDeletePwMsgType] = useState('success')
+
   useEffect(() => {
     api.get('/company').then(r => {
       setForm({ ...empty, ...r.data })
       setLoading(false)
     }).catch(() => setLoading(false))
+    loadDeletePwStatus()
   }, [])
+
+  const loadDeletePwStatus = () => {
+    api.get('/company/delete-password-status').then(r => setDeletePwSet(!!r.data.isSet)).catch(() => {})
+  }
+
+  const setDeletePw = (k, v) => setDeletePwForm(f => ({ ...f, [k]: v }))
+
+  const saveDeletePassword = async () => {
+    setDeletePwMsg('')
+    if (!deletePwForm.currentPassword) { setDeletePwMsg('Enter your current login password.'); setDeletePwMsgType('error'); return }
+    if (deletePwForm.newPassword.length < 4) { setDeletePwMsg('Delete password must be at least 4 characters.'); setDeletePwMsgType('error'); return }
+    if (deletePwForm.newPassword !== deletePwForm.confirmPassword) { setDeletePwMsg('Passwords do not match.'); setDeletePwMsgType('error'); return }
+    setDeletePwSaving(true)
+    try {
+      await api.post('/company/delete-password', {
+        currentPassword: deletePwForm.currentPassword,
+        newPassword: deletePwForm.newPassword,
+      })
+      setDeletePwForm(emptyDeletePwForm)
+      setDeletePwSet(true)
+      setDeletePwMsg('Delete confirmation password saved.')
+      setDeletePwMsgType('success')
+    } catch (e) {
+      setDeletePwMsg(e.response?.data?.error || 'Failed to save delete password')
+      setDeletePwMsgType('error')
+    }
+    setDeletePwSaving(false)
+  }
+
+  const removeDeletePassword = async () => {
+    setDeletePwMsg('')
+    if (!deletePwForm.currentPassword) { setDeletePwMsg('Enter your current login password to remove it.'); setDeletePwMsgType('error'); return }
+    setDeletePwSaving(true)
+    try {
+      await api.delete('/company/delete-password', { data: { currentPassword: deletePwForm.currentPassword } })
+      setDeletePwForm(emptyDeletePwForm)
+      setDeletePwSet(false)
+      setDeletePwMsg('Delete confirmation password removed. Your login password will be used instead.')
+      setDeletePwMsgType('success')
+    } catch (e) {
+      setDeletePwMsg(e.response?.data?.error || 'Failed to remove delete password')
+      setDeletePwMsgType('error')
+    }
+    setDeletePwSaving(false)
+  }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -165,6 +219,51 @@ export default function CompanySettings() {
               placeholder="XX-XX-XXXX-XXX-XX"
             />
           </FormGrid>
+        </div>
+      </Card>
+
+      <Card style={{ marginBottom: 20 }}>
+        <SectionLabel>Delete Confirmation Password</SectionLabel>
+        <p style={{ fontSize: 12.5, color: '#64748b', marginTop: 8, marginBottom: 16, lineHeight: 1.6 }}>
+          Set a dedicated password that must be entered to confirm deletions (e.g. Cash &amp; Bank accounts),
+          separate from your login password. {deletePwSet
+            ? 'A dedicated password is currently set.'
+            : 'No dedicated password is set — your login password is used for delete confirmations.'}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 420 }}>
+          <Input
+            label="Your Current Login Password"
+            required
+            type="password"
+            value={deletePwForm.currentPassword}
+            onChange={e => setDeletePw('currentPassword', e.target.value)}
+            placeholder="Required to authorize this change"
+          />
+          <Input
+            label="New Delete Confirmation Password"
+            type="password"
+            value={deletePwForm.newPassword}
+            onChange={e => setDeletePw('newPassword', e.target.value)}
+            placeholder="At least 4 characters"
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            value={deletePwForm.confirmPassword}
+            onChange={e => setDeletePw('confirmPassword', e.target.value)}
+            placeholder="Re-enter new password"
+          />
+          {deletePwMsg && <Alert type={deletePwMsgType}>{deletePwMsg}</Alert>}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn variant="primary" onClick={saveDeletePassword} disabled={deletePwSaving}>
+              {deletePwSaving ? 'Saving…' : 'Save Delete Password'}
+            </Btn>
+            {deletePwSet && (
+              <Btn variant="secondary" onClick={removeDeletePassword} disabled={deletePwSaving}>
+                Remove
+              </Btn>
+            )}
+          </div>
         </div>
       </Card>
 

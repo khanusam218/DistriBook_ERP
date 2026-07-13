@@ -22,7 +22,9 @@ import Employees from './pages/Employees'
 import UserManagement from './pages/UserManagement'
 import CompanySettings from './pages/CompanySettings'
 import Expenses from './pages/Expenses'
+import Backup from './pages/Backup'
 import Sidebar from './components/Sidebar'
+import { ToastContainer } from './components/Toast'
 import { loadCompanyInfo } from './utils/companyInfo'
 
 function AnimatedRoutes({ children }) {
@@ -37,15 +39,53 @@ function AnimatedRoutes({ children }) {
 function Guard({ permKey, element, currentUser }) {
   const isAdmin = currentUser?.role === 'admin'
   const perms = currentUser?.permissions || {}
-  if (isAdmin || perms[permKey]) return element
+  // Missing key = allowed; only explicitly false = denied
+  const allowed = isAdmin || perms[permKey] !== false
+  if (allowed) return element
   return <Navigate to="/dashboard" replace />
+}
+
+function AuthenticatedLayout({ currentUser, setIsAuthenticated }) {
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
+      <Sidebar setIsAuthenticated={setIsAuthenticated} />
+      <div style={{ flex: 1, marginLeft: 240, minHeight: '100vh', minWidth: 0 }}>
+        <AnimatedRoutes>
+          <Routes>
+            <Route path="/dashboard"          element={<Dashboard />} />
+            <Route path="/stocks"             element={<Guard permKey="stocks"           element={<Stocks />}           currentUser={currentUser} />} />
+            <Route path="/customers"          element={<Guard permKey="customers"        element={<Customers />}        currentUser={currentUser} />} />
+            <Route path="/vendors"            element={<Guard permKey="vendors"          element={<Vendors />}          currentUser={currentUser} />} />
+            <Route path="/purchases"          element={<Guard permKey="purchases"        element={<Purchases />}        currentUser={currentUser} />} />
+            <Route path="/purchase-returns"   element={<Guard permKey="purchase_returns" element={<PurchaseReturns />}  currentUser={currentUser} />} />
+            <Route path="/products"           element={<Guard permKey="products"         element={<Products />}         currentUser={currentUser} />} />
+            <Route path="/pos"                element={<Guard permKey="pos"              element={<POS />}              currentUser={currentUser} />} />
+            <Route path="/sales"              element={<Guard permKey="sales"            element={<Sales />}            currentUser={currentUser} />} />
+            <Route path="/ogp"                element={<Guard permKey="ogp"              element={<OGP />}              currentUser={currentUser} />} />
+            <Route path="/sale-returns"       element={<Guard permKey="sale_returns"     element={<SaleReturns />}      currentUser={currentUser} />} />
+            <Route path="/vendor-ledger"      element={<Guard permKey="vendor_ledger"    element={<VendorLedger />}     currentUser={currentUser} />} />
+            <Route path="/customer-ledger"    element={<Guard permKey="customer_ledger"  element={<CustomerLedger />}   currentUser={currentUser} />} />
+            <Route path="/receipts"           element={<Guard permKey="receipts"         element={<Receipts />}         currentUser={currentUser} />} />
+            <Route path="/vendor-payments"    element={<Guard permKey="vendor_payments"  element={<VendorPayments />}   currentUser={currentUser} />} />
+            <Route path="/expenses"           element={<Guard permKey="expenses"         element={<Expenses />}         currentUser={currentUser} />} />
+            <Route path="/cash-bank"          element={<Guard permKey="cash_bank"        element={<CashBank />}         currentUser={currentUser} />} />
+            <Route path="/employees"          element={<Guard permKey="employees"        element={<Employees />}        currentUser={currentUser} />} />
+            <Route path="/trial-balance"      element={<Guard permKey="trial_balance"    element={<TrialBalance />}     currentUser={currentUser} />} />
+            <Route path="/user-management"    element={<Guard permKey="user_management"  element={<UserManagement />}   currentUser={currentUser} />} />
+            <Route path="/company-settings"   element={<CompanySettings />} />
+            <Route path="/backup"             element={<Backup />} />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
+          </Routes>
+        </AnimatedRoutes>
+      </div>
+    </div>
+  )
 }
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -76,6 +116,7 @@ function App() {
 
   return (
     <Router>
+      <ToastContainer />
       <Routes>
         <Route
           path="/login"
@@ -84,39 +125,9 @@ function App() {
         <Route
           path="/*"
           element={
-            isAuthenticated ? (
-              <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
-                <Sidebar setIsAuthenticated={setIsAuthenticated} onCollapse={setSidebarCollapsed} />
-                <div style={{ flex: 1, marginLeft: sidebarCollapsed ? 64 : 240, minHeight: '100vh', transition: 'margin-left 0.2s ease' }}>
-                  <AnimatedRoutes>
-                  <Routes>
-                    <Route path="/dashboard"          element={<Dashboard />} />
-                    <Route path="/stocks"             element={<Guard permKey="stocks"           element={<Stocks />}           currentUser={currentUser} />} />
-                    <Route path="/customers"          element={<Guard permKey="customers"        element={<Customers />}        currentUser={currentUser} />} />
-                    <Route path="/vendors"            element={<Guard permKey="vendors"          element={<Vendors />}          currentUser={currentUser} />} />
-                    <Route path="/purchases"          element={<Guard permKey="purchases"        element={<Purchases />}        currentUser={currentUser} />} />
-                    <Route path="/purchase-returns"   element={<Guard permKey="purchase_returns" element={<PurchaseReturns />}  currentUser={currentUser} />} />
-                    <Route path="/products"           element={<Guard permKey="products"         element={<Products />}         currentUser={currentUser} />} />
-                    <Route path="/pos"                element={<Guard permKey="pos"              element={<POS />}              currentUser={currentUser} />} />
-                    <Route path="/sales"              element={<Guard permKey="sales"            element={<Sales />}            currentUser={currentUser} />} />
-                    <Route path="/ogp"                element={<Guard permKey="ogp"              element={<OGP />}              currentUser={currentUser} />} />
-                    <Route path="/sale-returns"       element={<Guard permKey="sale_returns"     element={<SaleReturns />}      currentUser={currentUser} />} />
-                    <Route path="/vendor-ledger"      element={<Guard permKey="vendor_ledger"    element={<VendorLedger />}     currentUser={currentUser} />} />
-                    <Route path="/customer-ledger"    element={<Guard permKey="customer_ledger"  element={<CustomerLedger />}   currentUser={currentUser} />} />
-                    <Route path="/receipts"           element={<Guard permKey="receipts"         element={<Receipts />}         currentUser={currentUser} />} />
-                    <Route path="/vendor-payments"    element={<Guard permKey="vendor_payments"  element={<VendorPayments />}   currentUser={currentUser} />} />
-                    <Route path="/expenses"           element={<Guard permKey="expenses"         element={<Expenses />}         currentUser={currentUser} />} />
-                    <Route path="/cash-bank"          element={<Guard permKey="cash_bank"        element={<CashBank />}         currentUser={currentUser} />} />
-                    <Route path="/employees"          element={<Guard permKey="employees"        element={<Employees />}        currentUser={currentUser} />} />
-                    <Route path="/trial-balance"      element={<Guard permKey="trial_balance"    element={<TrialBalance />}     currentUser={currentUser} />} />
-                    <Route path="/user-management"    element={<Guard permKey="user_management"  element={<UserManagement />}   currentUser={currentUser} />} />
-                    <Route path="/company-settings"   element={<CompanySettings />} />
-                    <Route path="/" element={<Navigate to="/dashboard" />} />
-                  </Routes>
-                  </AnimatedRoutes>
-                </div>
-              </div>
-            ) : <Navigate to="/login" />
+            isAuthenticated
+              ? <AuthenticatedLayout currentUser={currentUser} setIsAuthenticated={setIsAuthenticated} />
+              : <Navigate to="/login" />
           }
         />
       </Routes>

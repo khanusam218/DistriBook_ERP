@@ -29,6 +29,7 @@ exports.create = (req, res) => {
   try {
     const { vendor_id, amount, payment_method, bank_account_id, notes, payment_date } = req.body;
     if (!vendor_id || !amount || amount <= 0) return res.status(400).json({ error: 'Vendor and valid amount required' });
+    if (payment_method && payment_method !== 'CASH' && !bank_account_id) return res.status(400).json({ error: 'Select a bank account' });
 
     const vendor = db.prepare('SELECT * FROM vendors WHERE id = ?').get(vendor_id);
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });

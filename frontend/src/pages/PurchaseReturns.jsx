@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import { Btn, Input, Select, Modal, Card, Alert, Empty, ConfirmModal, Table, FormGrid, PageHeader, SectionLabel, Icon, Spinner } from '../components/ui'
 
@@ -48,15 +49,15 @@ export default function PurchaseReturns() {
 
   const save = async () => {
     const toReturn = items.filter(i => Number(i.quantity) > 0)
-    if (!form.purchaseId) return alert('Select a purchase')
-    if (toReturn.length === 0) return alert('Enter quantity for at least one item')
+    if (!form.purchaseId) return toast('Select a purchase')
+    if (toReturn.length === 0) return toast('Enter quantity for at least one item')
     const overLimit = toReturn.find(i => Number(i.quantity) > i.maxQty)
-    if (overLimit) return alert(`"${overLimit.productName}" — only ${overLimit.maxQty} available to return`)
+    if (overLimit) return toast(`"${overLimit.productName}" — only ${overLimit.maxQty} available to return`)
     setSaving(true)
     try {
       await api.post('/purchase-returns', { ...form, items: toReturn.map(i => ({ stockId: i.stockId, quantity: Number(i.quantity), price: Number(i.price) })) })
       await load(); setView('list')
-    } catch (e) { alert(e.response?.data?.error || 'Error') }
+    } catch (e) { toast(e.response?.data?.error || 'Error') }
     setSaving(false)
   }
 
@@ -67,7 +68,7 @@ export default function PurchaseReturns() {
 
   const del = async (id) => {
     try { await api.delete(`/purchase-returns/${id}`); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   const filtered = returns.filter(r => {
@@ -201,7 +202,7 @@ export default function PurchaseReturns() {
                     </td>
                     <td style={{ width: 110 }}>
                       <input
-                        type="number"
+                        type="number" onWheel={e => e.target.blur()}
                         min="0"
                         max={item.maxQty}
                         className="db-input"

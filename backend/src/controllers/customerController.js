@@ -31,8 +31,11 @@ exports.getNextCode = (req, res) => {
 
 exports.create = (req, res) => {
   try {
-    const { shopName, customerName, customerType, openingBalance, address, email, phone } = req.body;
-    if (!shopName || !customerName || !customerType) {
+    const { shopName, customerType, openingBalance, address, email, phone } = req.body;
+    // Customer Name (the contact person) is optional in the UI — many shops are registered
+    // by shop name alone. Fall back to the shop name so downstream displays never show blank.
+    const customerName = req.body.customerName || shopName;
+    if (!shopName || !customerType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     if (!['RETAILER', 'WHOLESALER', 'CUSTOMER'].includes(customerType)) {

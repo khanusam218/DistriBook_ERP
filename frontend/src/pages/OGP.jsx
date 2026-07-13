@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { getCompanyInfo } from '../utils/companyInfo'
 import { h } from '../utils/exportUtils'
 import { isValidPhone } from '../utils/validation'
+import AddCustomerModal from '../components/AddCustomerModal'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
@@ -24,7 +26,7 @@ function companyHeaderHTML(c) {
 
 // ─── Print Delivery Order (full or small) ─────────────────────────────────────
 function printDO(gp, billGroups, _unused, small = false) {
-  if (!billGroups.length) { alert('No saved bills to print'); return }
+  if (!billGroups.length) { toast('No saved bills to print'); return }
   const fs = small ? '8pt' : '10pt'
   const pad = small ? '6mm 8mm' : '12mm 15mm'
   const titleFs = small ? '12pt' : '15pt'
@@ -94,7 +96,7 @@ function printDO(gp, billGroups, _unused, small = false) {
 
 // ─── Print Gate Pass (consolidated, brand-sorted) ─────────────────────────────
 function printGPFromLines(gp, allLines, _unused, returns = []) {
-  if (!allLines.length) { alert('No saved items to print'); return }
+  if (!allLines.length) { toast('No saved items to print'); return }
 
   // Helper: format qty as "X CTN Y Pcs" or "X CTN"
   const fmtQty = (ctn, pcs) => pcs > 0 ? `${ctn} CTN ${pcs} Pcs` : `${ctn} CTN`
@@ -377,6 +379,9 @@ function EditRow({ gp, deliveryMen, saleReps, areas, onSave, onCancel }) {
         </select>
       </td>
       <td className="py-2 px-3">
+        {gp.status === 'CLOSED' ? <span className="badge badge-slate">Closed</span> : <span className="badge badge-green">Open</span>}
+      </td>
+      <td className="py-2 px-3">
         <div style={{display:'flex',gap:8}}>
           <button onClick={() => {
             if (!isValidPhone(form.mobile)) { setMobileErr('Invalid mobile number (e.g. 0300-1234567)'); return }
@@ -465,6 +470,8 @@ export default function OGP() {
   const [qDisc, setQDisc] = useState('0')
   const [qNet, setQNet] = useState('')
   const [qError, setQError] = useState('')
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
+  const [savingCustomer, setSavingCustomer] = useState(false)
 
   // ── Load ──
 
@@ -492,6 +499,22 @@ export default function OGP() {
   }
 
   useEffect(() => { loadAll().then(loadNextOgp) }, [])
+
+  const handleAddCustomer = async (customerForm) => {
+    if (!customerForm.shopName) return toast('Shop name is required')
+    if (!isValidPhone(customerForm.phone)) return toast('Invalid phone number. Use a format like 0300-1234567.')
+    setSavingCustomer(true)
+    try {
+      const r = await api.post('/customers', customerForm)
+      const updated = await api.get('/customers')
+      setCustomers(updated.data)
+      setQShop(String(r.data.id))
+      setQShopSearch(r.data.shop_name)
+      setQShopOpen(false)
+      setShowAddCustomer(false)
+    } catch (e) { toast(e.response?.data?.error || 'Error adding customer') }
+    setSavingCustomer(false)
+  }
 
   // ── Derived ──
 
@@ -535,30 +558,30 @@ export default function OGP() {
 
   const addStaff = async (name, mobile, type) => {
     try { await api.post('/gate-passes/staff', { name, mobile, type }); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
   const updateStaff = async (id, name, mobile) => {
     try { await api.put(`/gate-passes/staff/${id}`, { name, mobile }); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
   const deleteStaff = async (id) => {
     try { await api.delete(`/gate-passes/staff/${id}`); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
   const addArea = async (name) => {
     try { await api.post('/gate-passes/areas', { name }); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
   const deleteArea = async (id) => {
     try { await api.delete(`/gate-passes/areas/${id}`); await loadAll() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   // ── Save OGP header ──
 
   const saveOgp = async () => {
-    if (!form.ogpNumber) { alert('OGP Number is required'); return }
-    if (!isValidPhone(form.mobile)) { alert('Mobile number is invalid. Use a format like 0300-1234567.'); return }
+    if (!form.ogpNumber) { toast('OGP Number is required'); return }
+    if (!isValidPhone(form.mobile)) { toast('Mobile number is invalid. Use a format like 0300-1234567.'); return }
     setSaving(true)
     try {
       const r = await api.post('/gate-passes', {
@@ -575,7 +598,7 @@ export default function OGP() {
       const next = await api.get('/gate-passes/next-ogp')
       setForm({ ogpNumber: String(next.data.ogpNumber), deliveryDate: todayStr(), deliveryMan: '', mobile: '', deliverySaleMan: '', area: '' })
     } catch (e) {
-      alert(e.response?.data?.error || 'Error saving OGP')
+      toast(e.response?.data?.error || 'Error saving OGP')
     }
     setSaving(false)
   }
@@ -593,12 +616,12 @@ export default function OGP() {
         area: data.area,
       })
       await loadAll(); setEditId(null)
-    } catch (e) { alert(e.response?.data?.error || 'Error') }
+    } catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   const deleteOgp = async (id) => {
     try { await api.delete(`/gate-passes/${id}`); await loadAll(); setDeleteId(null) }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   // ── Open Booking DO for an OGP ──
@@ -692,7 +715,6 @@ export default function OGP() {
         await api.patch(`/gate-passes/${editGpOgp.id}/booking-item-rates`, { items: allIdChanges })
       }
       const returnItems = editGpItems.filter(i => (Number(i.returnQtyCtn) || 0) > 0 || (Number(i.returnQtyPcs) || 0) > 0)
-      console.log('[saveEditGp] returnItems:', JSON.stringify(returnItems.map(i => ({ returnQtyCtn: i.returnQtyCtn, returnQtyPcs: i.returnQtyPcs, stock_id: i.stock_id, item_code: i.item_code }))))
       if (returnItems.length > 0) {
         const returnPayload = {
           customer_id: null,
@@ -708,7 +730,6 @@ export default function OGP() {
             rate: Number(item.rate),
           }))
         }
-        console.log('[saveEditGp] sending return payload:', JSON.stringify(returnPayload))
         await api.post(`/gate-passes/${editGpOgp.id}/returns`, returnPayload)
       }
       const [gps] = await Promise.all([api.get('/gate-passes')])
@@ -987,24 +1008,7 @@ export default function OGP() {
       setCurrentBillLines([])
       await loadAll()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error deleting return')
-    }
-  }
-
-  const toggleGatePassStatus = async () => {
-    if (!bookingOgp) return
-    const isOpen = bookingOgp.status !== 'CLOSED'
-    const action = isOpen ? 'close' : 'reopen'
-    const msg = isOpen
-      ? `Close OGP #${bookingOgp.ogp_number}?`
-      : `Reopen OGP #${bookingOgp.ogp_number}?`
-    if (!confirm(msg)) return
-    try {
-      await api.post(`/gate-passes/${bookingOgp.id}/${action}`)
-      setBookingOgp(prev => ({ ...prev, status: isOpen ? 'CLOSED' : 'OPEN' }))
-      await loadAll()
-    } catch (e) {
-      alert(e.response?.data?.error || `Error ${action}ing gate pass`)
+      toast(e.response?.data?.error || 'Error deleting return')
     }
   }
 
@@ -1068,7 +1072,7 @@ export default function OGP() {
       await api.post(`/gate-passes/${bookingOgp.id}/booking-items`, { items: remaining })
       setAllSavedLines(remaining)
       await loadAll()
-    } catch (e) { alert(e.response?.data?.error || 'Error') }
+    } catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   // ── Summary totals (current bill only) ──
@@ -1119,10 +1123,6 @@ export default function OGP() {
             </div>
           </div>
         </div>
-        <button onClick={toggleGatePassStatus}
-          style={{background: isClosed ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.12)',border: isClosed ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(255,255,255,0.25)',borderRadius:8,padding:'7px 16px',cursor:'pointer',color: isClosed ? '#86efac' : 'white',fontSize:'0.8125rem',fontWeight:600}}>
-          {isClosed ? 'Reopen Gate Pass' : 'Close Gate Pass'}
-        </button>
       </div>
 
       {/* ── Main Content: Two-column grid ── */}
@@ -1178,6 +1178,13 @@ export default function OGP() {
                     )
                   })()}
                 </div>
+                <button
+                  onClick={() => setShowAddCustomer(true)}
+                  className="btn btn-primary"
+                  style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+                >
+                  + Add Customer
+                </button>
               </div>
             </div>
           )}
@@ -1185,7 +1192,7 @@ export default function OGP() {
       {/* ── Item Entry Form ── */}
       {!isClosed && <div className="card" style={{padding:'14px 18px'}}>
         <p style={{fontSize:'0.625rem',fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12}}>Add Line Item</p>
-        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr auto',gap:10,alignItems:'end'}}>
+        <div style={{display:'grid',gridTemplateColumns:'minmax(220px, 2.5fr) minmax(80px, 0.8fr) minmax(90px, 0.9fr) minmax(70px, 0.7fr) minmax(90px, 0.9fr) auto',gap:10,alignItems:'end'}}>
 
           {/* Searchable Item */}
           <div style={{position:'relative'}}>
@@ -1240,9 +1247,8 @@ export default function OGP() {
             <label className="form-label" style={{display:'block',marginBottom:4}}>
               Pieces {qItem?.pieces_per_ctn && <span style={{color:'#94a3b8',fontWeight:400,fontSize:'0.7rem'}}>({qItem.pieces_per_ctn}/ctn)</span>}
             </label>
-            <input type="number" value={qCtn || ''} min="0" step="1" placeholder="0"
+            <input type="number" onWheel={e => e.target.blur()} value={qCtn || ''} min="0" step="1" placeholder="0"
               onChange={e => { setQCtn(e.target.value); recalcNet(e.target.value, qRate, qDisc) }}
-              onWheel={e => e.target.blur()}
               className="db-input" style={{width:'100%'}} />
             <p style={{position:'absolute',top:'100%',left:0,fontSize:'0.7rem',color:'#4f46e5',marginTop:2,fontWeight:600,whiteSpace:'nowrap'}}>
               {qCtn && qItem?.pieces_per_ctn ? (() => {
@@ -1256,7 +1262,7 @@ export default function OGP() {
           {/* Rate */}
           <div>
             <label className="form-label" style={{display:'block',marginBottom:4}}>Rate</label>
-            <input type="number" value={qRate || ''} min="0" step="0.01" placeholder="0.00"
+            <input type="number" onWheel={e => e.target.blur()} value={qRate || ''} min="0" step="0.01" placeholder="0.00"
               onChange={e => { setQRate(e.target.value); recalcNet(qCtn, e.target.value, qDisc) }}
               className="db-input" style={{width:'100%'}} />
           </div>
@@ -1264,7 +1270,7 @@ export default function OGP() {
           {/* Discount */}
           <div>
             <label className="form-label" style={{display:'block',marginBottom:4}}>Disc</label>
-            <input type="number" value={qDisc || ''} min="0" step="0.01" placeholder="0.00"
+            <input type="number" onWheel={e => e.target.blur()} value={qDisc || ''} min="0" step="0.01" placeholder="0.00"
               onChange={e => { setQDisc(e.target.value); recalcNet(qCtn, qRate, e.target.value) }}
               className="db-input" style={{width:'100%'}} />
           </div>
@@ -1272,7 +1278,7 @@ export default function OGP() {
           {/* Net */}
           <div>
             <label className="form-label" style={{display:'block',marginBottom:4}}>Net</label>
-            <input type="number" value={qNet || ''} min="0" step="0.01" placeholder="0.00"
+            <input type="number" onWheel={e => e.target.blur()} value={qNet || ''} min="0" step="0.01" placeholder="0.00"
               onChange={e => setQNet(e.target.value)}
               className="db-input" style={{width:'100%',background:'#f0fdf4',borderColor:'#86efac'}} />
           </div>
@@ -1323,7 +1329,7 @@ export default function OGP() {
                           <span style={{fontWeight:600,color:'#374151'}}>{line.qty_ctn} CTN{line.qty_pieces > 0 ? ` ${line.qty_pieces} Pcs` : ''}</span>
                         ) : (
                           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-                            <input type="number"
+                            <input type="number" onWheel={e => e.target.blur()}
                               value={(line.qty_ctn * (line.pieces_per_ctn || 1)) + (line.qty_pieces || 0)}
                               min="0" step="1"
                               onChange={e => updateCurrentLine(line._key, 'total_pieces', e.target.value)}
@@ -1336,7 +1342,7 @@ export default function OGP() {
                       <td style={{textAlign:'right'}}>
                         {isClosed
                           ? <span style={{color:'#475569'}}>Rs.{fmt(line.rate)}</span>
-                          : <input type="number" value={line.rate || ''} min="0" step="0.01" placeholder="0.00"
+                          : <input type="number" onWheel={e => e.target.blur()} value={line.rate || ''} min="0" step="0.01" placeholder="0.00"
                               onChange={e => updateCurrentLine(line._key, 'rate', parseFloat(e.target.value) || 0)}
                               className="db-input" style={{width:80,fontSize:'0.75rem',padding:'3px 6px',textAlign:'right'}} />}
                       </td>
@@ -1344,7 +1350,7 @@ export default function OGP() {
                       <td style={{textAlign:'right'}}>
                         {isClosed
                           ? <span style={{color:'#ea580c',fontSize:'0.875rem'}}>Rs.{fmt(line.discount)}</span>
-                          : <input type="number" value={line.discount || ''} min="0" step="0.01" placeholder="0.00"
+                          : <input type="number" onWheel={e => e.target.blur()} value={line.discount || ''} min="0" step="0.01" placeholder="0.00"
                               onChange={e => updateCurrentLine(line._key, 'discount', parseFloat(e.target.value) || 0)}
                               className="db-input" style={{width:72,fontSize:'0.75rem',padding:'3px 6px',textAlign:'right'}} />}
                       </td>
@@ -1484,12 +1490,12 @@ export default function OGP() {
                 className="btn btn-secondary" style={{width:'100%',justifyContent:'center',...(savedBillGroups.length>0?{borderColor:'#c4b5fd',color:'#7c3aed'}:{color:'#94a3b8'})}}>
                 View All Bills{savedBillGroups.length>0?` (${savedBillGroups.length})`:''}
               </button>
-              <button onClick={() => setReturnsView(true)}
-                className="btn btn-secondary" style={{width:'100%',justifyContent:'center',...(ogpReturns.length>0?{borderColor:'#fca5a5',color:'#b91c1c'}:{})}}>
+              <button onClick={() => setReturnsView(true)} disabled={isClosed}
+                className="btn btn-secondary" style={{width:'100%',justifyContent:'center',opacity:isClosed?0.4:1,cursor:isClosed?'not-allowed':'pointer',...(ogpReturns.length>0?{borderColor:'#fca5a5',color:'#b91c1c'}:{})}}>
                 Returns{ogpReturns.length>0?` (${ogpReturns.length})`:''}
               </button>
-              <button onClick={() => openEditGp(bookingOgp)}
-                className="btn btn-secondary" style={{width:'100%',justifyContent:'center',borderColor:'#c4b5fd',color:'#7c3aed'}}>
+              <button onClick={() => openEditGp(bookingOgp)} disabled={isClosed}
+                className="btn btn-secondary" style={{width:'100%',justifyContent:'center',opacity:isClosed?0.4:1,cursor:isClosed?'not-allowed':'pointer',borderColor:'#c4b5fd',color:'#7c3aed'}}>
                 Edit GP
               </button>
               <div style={{height:1,background:'#f1f5f9',margin:'2px 0'}}></div>
@@ -1511,6 +1517,15 @@ export default function OGP() {
 
         </div>{/* end RIGHT COLUMN */}
       </div>{/* end grid */}
+
+      {showAddCustomer && (
+        <AddCustomerModal
+          onSave={handleAddCustomer}
+          onClose={() => setShowAddCustomer(false)}
+          saving={savingCustomer}
+          defaultCustomerType="RETAILER"
+        />
+      )}
 
       {/* All Bills overlay */}
       {billsView && (
@@ -1638,7 +1653,7 @@ export default function OGP() {
                         <td style={{textAlign:'right',color:'#6b7280',fontSize:'0.75rem'}}>Rs.{fmt(line.rate)}</td>
                         <td style={{textAlign:'center'}}>
                           <input
-                            type="number" min="0" max={line.qty_ctn} step="1"
+                            type="number" onWheel={e => e.target.blur()} min="0" max={line.qty_ctn} step="1"
                             value={line.return_qty_ctn || ''}
                             onChange={e => setReturnLines(prev => prev.map((l, j) =>
                               j === i ? { ...l, return_qty_ctn: e.target.value } : l
@@ -1649,7 +1664,7 @@ export default function OGP() {
                         </td>
                         <td style={{textAlign:'center'}}>
                           <input
-                            type="number" min="0" step="1"
+                            type="number" onWheel={e => e.target.blur()} min="0" step="1"
                             value={line.return_qty_pieces || ''}
                             onChange={e => setReturnLines(prev => prev.map((l, j) =>
                               j === i ? { ...l, return_qty_pieces: e.target.value } : l
@@ -1821,13 +1836,13 @@ export default function OGP() {
           await refreshPayments()
         }
         setPayDeleteId(null)
-      } catch (e) { alert(e.response?.data?.error || 'Failed to delete payment') }
+      } catch (e) { toast(e.response?.data?.error || 'Failed to delete payment') }
     }
 
     const handleUpdatePayment = async () => {
-      if (!payEditRow?.amount || Number(payEditRow.amount) <= 0) return alert('Enter a valid amount')
+      if (!payEditRow?.amount || Number(payEditRow.amount) <= 0) return toast('Enter a valid amount')
       const editMax = Math.max(0, gpTotalAmt - gpRetAmt - gpSavedPaid + (parseFloat(payEditRow.originalAmount ?? payEditRow.amount) || 0) - gpRowsPending)
-      if (Number(payEditRow.amount) > editMax + 0.01) return alert(`Amount cannot exceed Rs. ${editMax.toFixed(2)}`)
+      if (Number(payEditRow.amount) > editMax + 0.01) return toast(`Amount cannot exceed Rs. ${editMax.toFixed(2)}`)
       try {
         const pid = payEditRow.id
         if (String(pid).startsWith('local-')) {
@@ -1846,7 +1861,7 @@ export default function OGP() {
           await refreshPayments()
         }
         setPayEditRow(null)
-      } catch (e) { alert(e.response?.data?.error || 'Failed to update payment') }
+      } catch (e) { toast(e.response?.data?.error || 'Failed to update payment') }
     }
 
     return (
@@ -1880,7 +1895,7 @@ export default function OGP() {
                       <label style={{fontSize:12,fontWeight:600,color:'#64748b',display:'block',marginBottom:4}}>
                         Amount (Rs.) <span style={{fontWeight:400,color:'#94a3b8'}}>max: Rs. {editMaxAmt.toFixed(2)}</span>
                       </label>
-                      <input type="number" min="0.01" step="0.01" max={editMaxAmt} className="db-input" style={{width:'100%'}}
+                      <input type="number" onWheel={e => e.target.blur()} min="0.01" step="0.01" max={editMaxAmt} className="db-input" style={{width:'100%'}}
                         value={payEditRow.amount}
                         onChange={e => {
                           const capped = Math.min(parseFloat(e.target.value) || 0, editMaxAmt)
@@ -1974,20 +1989,20 @@ export default function OGP() {
                           <td style={{textAlign:'right',fontWeight:600}}>{qtyCtn}</td>
                           <td style={{textAlign:'right',color:'#64748b'}}>{qtyPcs}</td>
                           <td style={{textAlign:'right'}}>
-                            <input type="number" value={item.rate}
+                            <input type="number" onWheel={e => e.target.blur()} value={item.rate}
                               onChange={e => updateRate(item._consKey, e.target.value)}
                               className="db-input" style={{width:96,textAlign:'right',fontSize:'0.8125rem'}}
                               min="0" step="0.01" />
                           </td>
                           <td style={{textAlign:'right',color:'#475569'}}>Rs.{fmt(item.amount)}</td>
                           <td style={{textAlign:'right'}}>
-                            <input type="number" value={item.returnQtyCtn}
+                            <input type="number" onWheel={e => e.target.blur()} value={item.returnQtyCtn}
                               onChange={e => updateReturnCtn(item._consKey, e.target.value)}
                               className="db-input" style={{width:76,textAlign:'right',fontSize:'0.8125rem',...(retCtn>0?{borderColor:'#f87171',background:'#fff1f2'}:{})}}
                               min="0" max={qtyCtn} step="1" placeholder="" />
                           </td>
                           <td style={{textAlign:'right'}}>
-                            <input type="number" value={item.returnQtyPcs}
+                            <input type="number" onWheel={e => e.target.blur()} value={item.returnQtyPcs}
                               onChange={e => updateReturnPcs(item._consKey, e.target.value)}
                               className="db-input" style={{width:76,textAlign:'right',fontSize:'0.8125rem',...(retPcs>0?{borderColor:'#f87171',background:'#fff1f2'}:{})}}
                               min="0" max={qtyPcs} step="1" placeholder="" />
@@ -2087,7 +2102,7 @@ export default function OGP() {
               {safePaymentRows.map((row, idx) => (
                 <div key={row._id} style={{display:'grid',gridTemplateColumns:'auto 1fr 2fr 1fr 1fr auto',gap:8,alignItems:'center',background:'#f8fafc',borderRadius:10,padding:'10px 12px'}}>
                   <span style={{fontSize:'0.75rem',color:'#94a3b8',minWidth:20,textAlign:'center'}}>{idx+1}</span>
-                  <input type="number" min="0" step="0.01" placeholder="Amount"
+                  <input type="number" onWheel={e => e.target.blur()} min="0" step="0.01" placeholder="Amount"
                     value={row.amount}
                     onChange={ev => {
                       const otherRows = safePaymentRows.filter(r => r._id !== row._id).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
@@ -2095,7 +2110,6 @@ export default function OGP() {
                       const capped = Math.min(parseFloat(ev.target.value) || 0, maxAllowed)
                       updatePayRow(row._id, 'amount', capped)
                     }}
-                    onWheel={e => e.target.blur()}
                     className="db-input" />
                   <select value={row.bankAccountId}
                     onChange={ev => updatePayRow(row._id, 'bankAccountId', ev.target.value)}
@@ -2357,12 +2371,13 @@ export default function OGP() {
                   <th style={{width:140}}>Mobile</th>
                   <th>Sale Man</th>
                   <th>Area</th>
+                  <th style={{width:90}}>Status</th>
                   <th style={{width:120}}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {gatePasses.length === 0 ? (
-                  <tr><td colSpan={7} style={{textAlign:'center',padding:'40px 0',color:'#94a3b8'}}>No gate passes yet.</td></tr>
+                  <tr><td colSpan={8} style={{textAlign:'center',padding:'40px 0',color:'#94a3b8'}}>No gate passes yet.</td></tr>
                 ) : gatePasses.map(gp => (
                   editId === gp.id ? (
                     <EditRow key={gp.id} gp={gp} deliveryMen={deliveryMen} saleReps={saleReps} areas={areas}
@@ -2375,6 +2390,7 @@ export default function OGP() {
                       <td style={{color:'#64748b',fontSize:'0.8125rem',fontFamily:'monospace'}}>{gp.mobile || <span style={{color:'#cbd5e1'}}>—</span>}</td>
                       <td style={{color:'#374151'}}>{gp.delivery_sale_man || <span style={{color:'#cbd5e1'}}>—</span>}</td>
                       <td>{gp.area ? <span className="badge badge-purple">{gp.area}</span> : <span style={{color:'#cbd5e1'}}>—</span>}</td>
+                      <td>{gp.status === 'CLOSED' ? <span className="badge badge-slate">Closed</span> : <span className="badge badge-green">Open</span>}</td>
                       <td>
                         <div style={{display:'flex',gap:10}}>
                         <button onClick={() => setEditId(gp.id)} className="btn btn-ghost btn-sm" style={{color:'#4f46e5'}}>Edit</button>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 420px; height: 280px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Segoe UI', sans-serif;
+    color: white;
+    overflow: hidden;
+    -webkit-app-region: drag;
+  }
+  .logo { font-size: 42px; margin-bottom: 8px; }
+  h1 { font-size: 24px; font-weight: 800; letter-spacing: 0.5px; }
+  p { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+  .bar-wrap {
+    width: 200px; height: 4px;
+    background: #334155; border-radius: 4px;
+    margin-top: 32px; overflow: hidden;
+  }
+  .bar {
+    height: 100%; width: 30%;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    border-radius: 4px;
+    animation: slide 1.4s ease-in-out infinite;
+  }
+  .status { font-size: 11px; color: #64748b; margin-top: 10px; }
+  @keyframes slide {
+    0%   { transform: translateX(-100%); }
+    50%  { transform: translateX(566%); }
+    100% { transform: translateX(-100%); }
+  }
+</style>
+</head>
+<body>
+  <div class="logo">📦</div>
+  <h1>Thok Software ERP</h1>
+  <p>DistriBooks — Wholesale Business Management</p>
+  <div class="bar-wrap"><div class="bar"></div></div>
+  <div class="status">Starting server, please wait...</div>
+</body>
+</html>

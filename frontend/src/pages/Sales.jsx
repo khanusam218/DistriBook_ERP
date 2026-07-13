@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { isValidPhone } from '../utils/validation'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
-import { getCompanyInfo } from '../utils/companyInfo'
 import { Btn, Input, Select, Card, Alert, Empty, ConfirmModal, Table, FormGrid, PageHeader, SectionLabel, Icon, Spinner, Badge, Combobox } from '../components/ui'
+import ErrorBoundary from '../components/ErrorBoundary'
+import PrintInvoice, { numberToWords } from '../components/InvoicePreview'
+import AddCustomerModal from '../components/AddCustomerModal'
 
 const LIST_COLS = [
   { header: 'Date', accessor: r => r.sale_date },
@@ -14,234 +17,11 @@ const LIST_COLS = [
   { header: 'Total', accessor: r => `Rs. ${Number(r.total_amount).toFixed(2)}` },
 ]
 
-const emptyCustomer = { customerCode: '', shopName: '', customerName: '', customerType: 'RETAILER', address: '', email: '', phone: '', openingBalance: 0 }
-
-function numberToWords(amount) {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
-  function convert(n) {
-    if (n === 0) return ''
-    if (n < 20) return ones[n]
-    if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '')
-    if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convert(n % 100) : '')
-    if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '')
-    if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '')
-    return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '')
-  }
-  const rupees = Math.floor(Math.abs(amount))
-  const paise = Math.round((Math.abs(amount) - rupees) * 100)
-  if (rupees === 0 && paise === 0) return 'Zero Rupees Only'
-  let result = 'Rupees ' + convert(rupees)
-  if (paise > 0) result += ' and ' + convert(paise) + ' Paise'
-  return result + ' Only'
-}
-
-function PrintInvoice({ sale, onClose }) {
-  const printRef = useRef()
-  const hasDiscount = sale.items?.some(i => Number(i.discount) > 0)
-  const hasDescription = sale.items?.some(i => i.description)
-  const co = getCompanyInfo()
-  const colSpan = 4 + (hasDescription ? 1 : 0) + (hasDiscount ? 1 : 0)
-
-  const print = () => {
-    const content = printRef.current.innerHTML
-    const w = window.open('', '_blank')
-    w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${sale.bill_no || sale.id}</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Arial', sans-serif; font-size: 12px; color: #1a1a1a; background: #fff; padding: 32px; }
-      .inv-wrap { max-width: 750px; margin: 0 auto; }
-      /* Header */
-      .inv-header { text-align: center; border-bottom: 3px double #1e293b; padding-bottom: 14px; margin-bottom: 18px; }
-      .inv-header h1 { font-size: 22px; font-weight: 800; color: #1e293b; letter-spacing: 1px; margin-bottom: 3px; }
-      .inv-header .tagline { font-size: 11px; color: #555; margin: 2px 0; }
-      .inv-header .contact { font-size: 10px; color: #666; margin: 2px 0; }
-      .inv-title { text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #475569; text-transform: uppercase; margin-bottom: 18px; }
-      /* Info grid */
-      .inv-info { display: flex; justify-content: space-between; margin-bottom: 18px; gap: 16px; }
-      .inv-info-box { flex: 1; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; background: #f8fafc; }
-      .inv-info-box .lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px; }
-      .inv-info-box .val { font-size: 13px; font-weight: 700; color: #1e293b; }
-      .inv-info-box .sub { font-size: 10px; color: #64748b; margin-top: 2px; }
-      /* Table */
-      table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-      thead tr { background: #1e293b; color: #fff; }
-      thead th { padding: 9px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
-      thead th.r { text-align: right; }
-      tbody tr { border-bottom: 1px solid #e2e8f0; }
-      tbody tr:nth-child(even) { background: #f8fafc; }
-      tbody td { padding: 8px 10px; font-size: 11.5px; color: #334155; }
-      tbody td.r { text-align: right; }
-      tbody td.num { font-variant-numeric: tabular-nums; }
-      /* Totals */
-      .inv-total-row { background: #1e293b !important; }
-      .inv-total-row td { padding: 10px 10px; font-size: 13px; font-weight: 800; color: #fff !important; }
-      /* Words */
-      .inv-words { font-size: 10.5px; font-style: italic; color: #475569; margin: 8px 0 24px; }
-      /* Footer */
-      .inv-footer { display: flex; justify-content: space-between; margin-top: 48px; padding-top: 12px; border-top: 1px dashed #cbd5e1; }
-      .inv-footer .sig { text-align: center; min-width: 160px; }
-      .inv-footer .sig-line { border-top: 1.5px solid #334155; margin-bottom: 6px; }
-      .inv-footer .sig-label { font-size: 11px; color: #475569; font-weight: 600; }
-      .inv-stamp { text-align: center; font-size: 9px; color: #94a3b8; margin-top: 20px; }
-      @media print { body { padding: 16px; } }
-    </style></head><body>
-    <div class="inv-wrap">${content}</div>
-    </body></html>`)
-    w.document.close(); w.focus(); setTimeout(() => { w.print() }, 300)
-  }
-
-  const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
-
-  return (
-    <div className="modal-backdrop">
-      <div className="modal-box" style={{ maxWidth: 720, maxHeight: '92vh', overflow: 'auto' }}>
-        <div className="modal-header">
-          <h2 style={{ fontSize: 15 }}>Invoice Preview</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={print} icon={<Icon.Print style={{ width: 14, height: 14 }} />}>Print / PDF</Btn>
-            <button className="modal-close" onClick={onClose}><Icon.X style={{ width: 14, height: 14 }} /></button>
-          </div>
-        </div>
-
-        <div ref={printRef} style={{ padding: '28px 36px', background: '#fff' }}>
-          {/* Company Header */}
-          <div className="inv-header" style={{ textAlign: 'center', borderBottom: '3px double #1e293b', paddingBottom: 14, marginBottom: 16 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', letterSpacing: 1 }}>{co.name || 'SALE INVOICE'}</div>
-            {co.tagline && <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>{co.tagline}</div>}
-            {co.address && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{[co.address, co.city].filter(Boolean).join(', ')}</div>}
-            {(co.phone || co.mobile) && <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{[co.phone && `Ph: ${co.phone}`, co.mobile && `Mob: ${co.mobile}`].filter(Boolean).join('   |   ')}</div>}
-            {(co.ntn || co.strn) && <div style={{ fontSize: 9, color: '#888', marginTop: 2 }}>{[co.ntn && `NTN: ${co.ntn}`, co.strn && `STRN: ${co.strn}`].filter(Boolean).join('   |   ')}</div>}
-          </div>
-
-          <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, letterSpacing: 4, color: '#475569', textTransform: 'uppercase', marginBottom: 18 }}>Sale Invoice</div>
-
-          {/* Info boxes */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-            <div style={{ flex: 2, border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 14px', background: '#f8fafc' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 4 }}>Bill To</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{sale.shop_name || sale.customer_name || 'Direct Sale'}</div>
-              {sale.customer_name && sale.shop_name && sale.customer_name !== sale.shop_name && (
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{sale.customer_name}</div>
-              )}
-            </div>
-            <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 14px', background: '#f8fafc' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 4 }}>Bill No</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{sale.bill_no || '—'}</div>
-            </div>
-            <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 14px', background: '#f8fafc' }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 4 }}>Date</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{sale.sale_date}</div>
-            </div>
-            {sale.gate_pass_no && (
-              <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 14px', background: '#f8fafc' }}>
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#94a3b8', marginBottom: 4 }}>Gate Pass #</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>{sale.gate_pass_no}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Items Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 12 }}>
-            <thead>
-              <tr style={{ background: '#1e293b' }}>
-                <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'left', width: 36 }}>#</th>
-                <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'left' }}>Product Name</th>
-                {hasDescription && <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'left' }}>Description</th>}
-                <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'right', width: 100 }}>Rate</th>
-                <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'right', width: 60 }}>Qty</th>
-                {hasDiscount && <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'right', width: 70 }}>Disc %</th>}
-                <th style={{ padding: '9px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#fff', textAlign: 'right', width: 110 }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sale.items?.map((item, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', background: i % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                  <td style={{ padding: '8px 10px', fontSize: 12, color: '#94a3b8', textAlign: 'left' }}>{i + 1}</td>
-                  <td style={{ padding: '8px 10px', fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{item.product_name}</td>
-                  {hasDescription && <td style={{ padding: '8px 10px', fontSize: 11, color: '#64748b' }}>{item.description || '—'}</td>}
-                  <td style={{ padding: '8px 10px', fontSize: 12, color: '#334155', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>Rs. {fmt(item.product_rate)}</td>
-                  <td style={{ padding: '8px 10px', fontSize: 12, color: '#334155', textAlign: 'right', fontWeight: 600 }}>{item.product_qty}</td>
-                  {hasDiscount && <td style={{ padding: '8px 10px', fontSize: 12, color: '#334155', textAlign: 'right' }}>{Number(item.discount) > 0 ? `${item.discount}%` : '—'}</td>}
-                  <td style={{ padding: '8px 10px', fontSize: 12, color: '#1e293b', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>Rs. {fmt(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ background: '#1e293b' }}>
-                <td colSpan={colSpan} style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#fff' }}>Grand Total</td>
-                <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#fbbf24', fontVariantNumeric: 'tabular-nums' }}>Rs. {fmt(sale.total_amount)}</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          {/* Amount in words */}
-          <div style={{ fontSize: 11, fontStyle: 'italic', color: '#475569', marginBottom: 32 }}>
-            {numberToWords(Number(sale.total_amount))}
-          </div>
-
-          {/* Signatures */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 40, paddingTop: 12, borderTop: '1px dashed #cbd5e1' }}>
-            <div style={{ textAlign: 'center', minWidth: 160 }}>
-              <div style={{ borderTop: '1.5px solid #334155', marginBottom: 6 }} />
-              <div style={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>Received By</div>
-            </div>
-            <div style={{ textAlign: 'center', minWidth: 160 }}>
-              <div style={{ borderTop: '1.5px solid #334155', marginBottom: 6 }} />
-              <div style={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>Authorized Signature</div>
-            </div>
-          </div>
-
-          <div style={{ textAlign: 'center', fontSize: 9, color: '#94a3b8', marginTop: 20 }}>
-            Generated by {co.name || 'DistriBooks'} — {new Date().toLocaleDateString()}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function AddCustomerModal({ onSave, onClose, saving }) {
-  const [form, setForm] = useState(emptyCustomer)
-  const change = (k, v) => setForm(f => ({ ...f, [k]: v }))
-  return (
-    <div className="modal-backdrop">
-      <div className="modal-box" style={{ maxWidth: 520 }}>
-        <div className="modal-header">
-          <h2>Quick Add Customer</h2>
-          <button className="modal-close" onClick={onClose}><Icon.X style={{ width: 14, height: 14 }} /></button>
-        </div>
-        <div className="modal-body">
-          <FormGrid cols={2}>
-            <Select label="Customer Type" value={form.customerType} onChange={e => change('customerType', e.target.value)}>
-              <option value="RETAILER">RETAILER</option>
-              <option value="WHOLESALER">WHOLESALER</option>
-            </Select>
-            <Input label="Phone" placeholder="e.g. 0300-1234567" type="text" value={form.phone} onChange={e => change('phone', e.target.value)} />
-            <div style={{ gridColumn: '1/-1' }}>
-              <Input label="Shop Name" required placeholder="Shop name" value={form.shopName} onChange={e => change('shopName', e.target.value)} autoFocus />
-            </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <Input label="Customer Name" placeholder="Owner / contact name" value={form.customerName} onChange={e => change('customerName', e.target.value)} />
-            </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <Input label="Address" placeholder="Full address" value={form.address} onChange={e => change('address', e.target.value)} />
-            </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <Input label="Opening Balance" type="number" step="any" placeholder="0" value={form.openingBalance || ''} onChange={e => change('openingBalance', Number(e.target.value))} />
-            </div>
-          </FormGrid>
-        </div>
-        <div className="modal-footer">
-          <Btn variant="secondary" onClick={onClose}>Cancel</Btn>
-          <Btn onClick={() => onSave(form)} disabled={saving} icon={saving ? <Spinner size={13} /> : null}>
-            {saving ? 'Saving…' : 'Add Customer'}
-          </Btn>
-        </div>
-      </div>
-    </div>
-  )
+// Stock quantity is tracked in pieces; show it as CTN (with fractional cartons, e.g. 3.5) for product selection.
+function fmtCtnQty(pieces, piecesPerCtn) {
+  const ppc = Number(piecesPerCtn) || 1
+  const ctn = Math.round((Number(pieces) || 0) / ppc * 100) / 100
+  return ctn.toString()
 }
 
 export default function Sales() {
@@ -307,8 +87,8 @@ export default function Sales() {
   }
 
   const handleAddCustomer = async (customerForm) => {
-    if (!customerForm.shopName) return alert('Shop name is required')
-    if (!isValidPhone(customerForm.phone)) return alert('Invalid phone number. Use a format like 0300-1234567.')
+    if (!customerForm.shopName) return toast('Shop name is required')
+    if (!isValidPhone(customerForm.phone)) return toast('Invalid phone number. Use a format like 0300-1234567.')
     setSavingCustomer(true)
     try {
       const r = await api.post('/customers', customerForm)
@@ -316,14 +96,14 @@ export default function Sales() {
       setCustomers(updated.data)
       setForm(f => ({ ...f, customerId: String(r.data.id) }))
       setShowAddCustomer(false)
-    } catch (e) { alert(e.response?.data?.error || 'Error adding customer') }
+    } catch (e) { toast(e.response?.data?.error || 'Error adding customer') }
     setSavingCustomer(false)
   }
 
   const save = async () => {
-    if (items.length === 0) return alert('Add at least one item')
+    if (items.length === 0) return toast('Add at least one item')
     const unselected = items.find(i => !i.stockId || Number(i.stockId) === 0)
-    if (unselected) return alert('Please select a product for all items')
+    if (unselected) return toast('Please select a product for all items')
     setSaving(true)
     try {
       const payload = {
@@ -335,6 +115,9 @@ export default function Sales() {
           description: opts.description ? i.description : '',
           productRate: Number(i.productRate) || 0,
           productQty: getProductQty(i),
+          qtyCtn: Number(i.qtyCtn) || 0,
+          qtyPieces: Number(i.qtyPieces) || 0,
+          piecesPerCtn: Number(i.piecesPerCtn) || 1,
           discount: opts.discount ? Number(i.discount) || 0 : 0,
         }))
       }
@@ -345,14 +128,14 @@ export default function Sales() {
       }
       setEditId(null)
       await load(); setView('list')
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const saveAndPrint = async () => {
-    if (items.length === 0) return alert('Add at least one item')
+    if (items.length === 0) return toast('Add at least one item')
     const unselected = items.find(i => !i.stockId || Number(i.stockId) === 0)
-    if (unselected) return alert('Please select a product for all items')
+    if (unselected) return toast('Please select a product for all items')
     setSaving(true)
     try {
       const payload = {
@@ -364,6 +147,9 @@ export default function Sales() {
           description: opts.description ? i.description : '',
           productRate: Number(i.productRate) || 0,
           productQty: getProductQty(i),
+          qtyCtn: Number(i.qtyCtn) || 0,
+          qtyPieces: Number(i.qtyPieces) || 0,
+          piecesPerCtn: Number(i.piecesPerCtn) || 1,
           discount: opts.discount ? Number(i.discount) || 0 : 0,
         }))
       }
@@ -381,13 +167,17 @@ export default function Sales() {
       // open print after returning to list
       const r = await api.get(`/sales/${savedId}`)
       setPrintSale(r.data)
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const openPrint = async (id) => {
-    const r = await api.get(`/sales/${id}`)
-    setPrintSale(r.data)
+    try {
+      const r = await api.get(`/sales/${id}`)
+      setPrintSale(r.data)
+    } catch (e) {
+      toast(e.response?.data?.error || e.message || 'Failed to load invoice for printing')
+    }
   }
 
   const openEdit = async (id) => {
@@ -404,20 +194,25 @@ export default function Sales() {
       })
       // Load fresh stocks to ensure piecesPerCtn lookup is accurate
       const stList = stocks.length > 0 ? stocks : (await api.get('/stocks')).data
-      setItems((s.items || []).map(i => ({
-        stockId: String(i.stock_id),
-        itemCode: i.item_code || '',
-        productName: i.product_name || '',
-        description: i.description || '',
-        productRate: String(i.product_rate || ''),
-        qtyCtn: '',
-        qtyPieces: String(i.product_qty || ''),
-        piecesPerCtn: stList.find(st => st.id === i.stock_id)?.pieces_per_ctn || 1,
-        discount: i.discount ? String(i.discount) : '',
-      })))
+      setItems((s.items || []).map(i => {
+        // Older sales saved before CTN/PCS was tracked separately have no qty_ctn —
+        // fall back to showing the full quantity as loose pieces, as before.
+        const hasSplit = i.qty_ctn != null && (Number(i.qty_ctn) > 0 || Number(i.qty_loose_pieces) > 0)
+        return {
+          stockId: String(i.stock_id),
+          itemCode: i.item_code || '',
+          productName: i.product_name || '',
+          description: i.description || '',
+          productRate: String(i.product_rate || ''),
+          qtyCtn: hasSplit ? String(i.qty_ctn || '') : '',
+          qtyPieces: hasSplit ? String(i.qty_loose_pieces || '') : String(i.product_qty || ''),
+          piecesPerCtn: i.pieces_per_ctn || stList.find(st => st.id === i.stock_id)?.pieces_per_ctn || 1,
+          discount: i.discount ? String(i.discount) : '',
+        }
+      }))
       setView('new')
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to load sale for editing')
+      toast(e.response?.data?.error || 'Failed to load sale for editing')
     }
   }
 
@@ -425,6 +220,7 @@ export default function Sales() {
     try {
       setReceiptSale(sale)
       setReceiptForm({ amount: '', method: 'CASH', date: new Date().toISOString().split('T')[0], notes: '' })
+      setReceiptBalance(null) // unknown until fetched below — avoids showing a stale/wrong balance from the previously opened invoice
       // load bank accounts if not loaded
       if (bankAccounts.length === 0) {
         const r = await api.get('/bank-accounts')
@@ -439,14 +235,16 @@ export default function Sales() {
       } else {
         setReceiptBalance(0)
       }
-    } catch (e) { alert('Failed to open receipt: ' + (e.message || '')) }
+    } catch (e) { toast('Failed to open receipt: ' + (e.message || '')) }
   }
 
   const saveReceipt = async () => {
     if (!receiptSale) return
     const amt = parseFloat(receiptForm.amount)
-    if (!amt || amt <= 0) { alert('Enter a valid amount'); return }
-    if (!receiptSale.customer_id) { alert('This sale has no customer. Cannot create a receipt.'); return }
+    if (!amt || amt <= 0) { toast('Enter a valid amount'); return }
+    if (!receiptSale.customer_id) { toast('This sale has no customer. Cannot create a receipt.'); return }
+    if (receiptBalance === null || receiptBalance <= 0) { toast('No outstanding balance — this account is already fully paid.'); return }
+    if (receiptForm.method !== 'CASH' && !receiptForm.bankAccountId) { toast('Select a bank account'); return }
     setReceiptSaving(true)
     try {
       const customer = customers.find(c => c.id === receiptSale.customer_id)
@@ -468,14 +266,14 @@ export default function Sales() {
         }]
       })
       setReceiptSale(null)
-      alert('Receipt saved successfully!')
-    } catch (e) { alert(e.response?.data?.error || 'Failed to save receipt') }
+      toast('Receipt saved successfully!')
+    } catch (e) { toast(e.response?.data?.error || 'Failed to save receipt') }
     setReceiptSaving(false)
   }
 
   const del = async (id) => {
     try { await api.delete(`/sales/${id}`); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Cannot delete') }
+    catch (e) { toast(e.response?.data?.error || 'Cannot delete') }
   }
 
   const filtered = sales.filter(s => {
@@ -514,6 +312,9 @@ export default function Sales() {
                   description: i.description,
                   product_rate: Number(i.productRate) || 0,
                   product_qty: getProductQty(i),
+                  qty_ctn: Number(i.qtyCtn) || 0,
+                  qty_loose_pieces: Number(i.qtyPieces) || 0,
+                  pieces_per_ctn: Number(i.piecesPerCtn) || 1,
                   discount: Number(i.discount) || 0,
                   total: getItemTotal(i),
                 }))
@@ -584,7 +385,7 @@ export default function Sales() {
                     <tr>
                       <th>Product</th>
                       {opts.description && <th style={{ width: 120 }}>Description</th>}
-                      <th style={{ width: 110 }}>Rate / Pc</th>
+                      <th style={{ width: 110 }}>Rate / CTN</th>
                       <th style={{ width: 80 }}>CTN</th>
                       <th style={{ width: 80 }}>Pieces</th>
                       {opts.discount && <th style={{ width: 80 }}>Disc %</th>}
@@ -603,7 +404,7 @@ export default function Sales() {
                           <td style={{ padding: '8px 6px' }}>
                             <Combobox
                               inputId={`sales-product-${idx}`}
-                              options={stocks.map(s => ({ value: String(s.id), label: `${s.product_name} (${s.company_name}) — Qty: ${s.quantity}` }))}
+                              options={stocks.map(s => ({ value: String(s.id), label: `${s.product_name} (${s.company_name}) — Qty: ${fmtCtnQty(s.quantity, s.pieces_per_ctn)} CTN` }))}
                               value={item.stockId}
                               onSelect={(val) => {
                                 if (!val) {
@@ -642,7 +443,7 @@ export default function Sales() {
                           )}
                           <td style={{ padding: '8px 6px' }}>
                             <input
-                              type="number"
+                              type="number" onWheel={e => e.target.blur()}
                               min="0"
                               step="any"
                               className="db-input"
@@ -654,7 +455,7 @@ export default function Sales() {
                           </td>
                           <td style={{ padding: '8px 6px' }}>
                             <input
-                              type="number"
+                              type="number" onWheel={e => e.target.blur()}
                               min="0"
                               className="db-input"
                               value={item.qtyCtn || ''}
@@ -665,7 +466,7 @@ export default function Sales() {
                           </td>
                           <td style={{ padding: '8px 6px' }}>
                             <input
-                              type="number"
+                              type="number" onWheel={e => e.target.blur()}
                               min="0"
                               className="db-input"
                               value={item.qtyPieces || ''}
@@ -677,7 +478,7 @@ export default function Sales() {
                           {opts.discount && (
                             <td style={{ padding: '8px 6px' }}>
                               <input
-                                type="number"
+                                type="number" onWheel={e => e.target.blur()}
                                 min="0"
                                 max="100"
                                 step="any"
@@ -767,7 +568,11 @@ export default function Sales() {
         />
       )}
 
-      {printSale && <PrintInvoice sale={printSale} onClose={() => setPrintSale(null)} />}
+      {printSale && (
+        <ErrorBoundary key={printSale.id || 'new'} onClose={() => setPrintSale(null)}>
+          <PrintInvoice sale={printSale} onClose={() => setPrintSale(null)} />
+        </ErrorBoundary>
+      )}
     </div>
   )
 
@@ -863,7 +668,7 @@ export default function Sales() {
                 <td style={{ fontWeight: 500 }}>{s.shop_name || <span style={{ color: '#94a3b8' }}>Direct Sale</span>}</td>
                 <td style={{ fontWeight: 700, color: '#0f172a' }}>Rs. {Number(s.total_amount).toFixed(2)}</td>
                 <td>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                     <Btn variant="ghost" size="sm" icon={<Icon.Print style={{ width: 13, height: 13 }} />} onClick={() => openPrint(s.id)}>Print</Btn>
                     <Btn variant="secondary" size="sm" icon={<Icon.Edit style={{ width: 13, height: 13 }} />} onClick={() => openEdit(s.id)}>Edit</Btn>
                     <Btn variant="secondary" size="sm" icon={<Icon.Check style={{ width: 13, height: 13 }} />} onClick={() => openReceipt(s)}>Receipt</Btn>
@@ -876,7 +681,11 @@ export default function Sales() {
         </Table>
       </Card>
 
-      {printSale && <PrintInvoice sale={printSale} onClose={() => setPrintSale(null)} />}
+      {printSale && (
+        <ErrorBoundary key={printSale.id || 'new'} onClose={() => setPrintSale(null)}>
+          <PrintInvoice sale={printSale} onClose={() => setPrintSale(null)} />
+        </ErrorBoundary>
+      )}
 
       {/* Collect Payment Modal */}
       {receiptSale && (
@@ -900,7 +709,7 @@ export default function Sales() {
               <div style={{ flex: 1, background: '#1e293b', borderRadius: 8, padding: '8px 12px' }}>
                 <div style={{ color: '#64748b', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Outstanding</div>
                 <div style={{ color: '#f97316', fontWeight: 800, fontSize: 15, marginTop: 2 }}>
-                  Rs. {Number(receiptBalance).toLocaleString('en-PK', { minimumFractionDigits: 2 })}
+                  {receiptBalance === null ? 'Loading…' : `Rs. ${Number(receiptBalance).toLocaleString('en-PK', { minimumFractionDigits: 2 })}`}
                 </div>
                 {receiptSale.customer_id && customers.find(c => c.id === receiptSale.customer_id) && (
                   <div style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
@@ -919,10 +728,15 @@ export default function Sales() {
 
             {/* Form */}
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {receiptBalance !== null && receiptBalance <= 0 && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#15803d', fontWeight: 600 }}>
+                  This account has no outstanding balance — payment not required.
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Amount Received <span style={{ color: '#dc2626' }}>*</span></label>
                 <input
-                  type="number"
+                  type="number" onWheel={e => e.target.blur()}
                   min="0"
                   step="0.01"
                   className="db-input"
@@ -977,8 +791,8 @@ export default function Sales() {
                 style={{ background: 'none', border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '9px 20px', fontSize: 13, fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={saveReceipt} disabled={receiptSaving}
-                style={{ background: '#f59e0b', border: 'none', borderRadius: 8, padding: '9px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: receiptSaving ? 'not-allowed' : 'pointer', opacity: receiptSaving ? 0.7 : 1 }}>
+              <button onClick={saveReceipt} disabled={receiptSaving || receiptBalance <= 0}
+                style={{ background: '#f59e0b', border: 'none', borderRadius: 8, padding: '9px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: (receiptSaving || receiptBalance <= 0) ? 'not-allowed' : 'pointer', opacity: (receiptSaving || receiptBalance <= 0) ? 0.7 : 1 }}>
                 {receiptSaving ? 'Saving…' : 'Save Receipt'}
               </button>
             </div>

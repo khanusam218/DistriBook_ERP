@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Icon } from './ui'
 
 const NAV = [
@@ -108,25 +108,32 @@ const NAV = [
       <circle cx={12} cy={12} r={3}/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
     </svg>
   )},
+  { label: 'User Management', path: '/user-management', key: 'user_management', Icon: ({ ...p }) => (
+    <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx={9} cy={7} r={4}/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  )},
+  { label: 'Backup & Restore', path: '/backup', key: 'backup', Icon: ({ ...p }) => (
+    <svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </svg>
+  )},
 ]
 
-function Sidebar({ setIsAuthenticated, onCollapse }) {
+function Sidebar({ setIsAuthenticated }) {
   const navigate = useNavigate()
   const location = useLocation()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
   const perms = user.permissions || {}
-  const [collapsed, setCollapsed] = useState(false)
-
-  const toggleCollapsed = (val) => {
-    const next = val !== undefined ? val : !collapsed
-    setCollapsed(next)
-    onCollapse?.(next)
-  }
   const navRef = useRef(null)
 
-  const canSee = (item) =>
-    item.section || item.key === 'dashboard' || item.key === 'company_settings' || isAdmin || perms[item.key]
+  const canSee = (item) => {
+    if (item.section || item.key === 'dashboard' || item.key === 'company_settings' || item.key === 'backup') return true;
+    if (isAdmin) return true;
+    // Missing key = allowed; only explicitly false = denied
+    return perms[item.key] !== false;
+  }
 
   const visibleItems = NAV.reduce((acc, item, idx) => {
     if (item.section) {
@@ -145,61 +152,37 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
     navigate('/login')
   }
 
-  // Global keyboard shortcut: Ctrl+\ toggles sidebar
-  useEffect(() => {
-    const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
-        e.preventDefault()
-        toggleCollapsed()
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
-  const w = collapsed ? 64 : 240
-
   return (
     <aside
       style={{
-        position: 'fixed', left: 0, top: 0, height: '100vh', width: w,
+        position: 'fixed', left: 0, top: 0, height: '100vh', width: 240,
         background: '#0f172a',
         display: 'flex', flexDirection: 'column',
-        transition: 'width 0.2s ease',
         zIndex: 40,
         borderRight: '1px solid #1e293b',
       }}
     >
       {/* Logo */}
       <div style={{
-        padding: collapsed ? '18px 0' : '18px 20px',
+        padding: '18px 20px',
         borderBottom: '1px solid #1e293b',
-        display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0,
       }}>
-        {!collapsed && (
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 28, height: 28, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
-                  <path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/>
-                </svg>
-              </div>
-              DistriBooks
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 17, color: '#fff', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, height: 28, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
+                <path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/>
+              </svg>
             </div>
-            <div style={{ fontSize: 11, color: '#475569', marginTop: 2, marginLeft: 36 }}>ERP System</div>
+            DistriBooks
           </div>
-        )}
-        {collapsed && (
-          <div style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #6366f1, #4f46e5)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
-              <path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/>
-            </svg>
-          </div>
-        )}
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 2, marginLeft: 36 }}>ERP System</div>
+        </div>
         <button
-          onClick={() => toggleCollapsed()}
-          data-tip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() => window.location.reload()}
+          title="Hard Refresh (F5)"
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: '#475569', padding: 4, borderRadius: 6,
@@ -209,7 +192,10 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
           onMouseEnter={e => e.currentTarget.style.color = '#94a3b8'}
           onMouseLeave={e => e.currentTarget.style.color = '#475569'}
         >
-          <Icon.Menu style={{ width: 16, height: 16 }} />
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+          </svg>
         </button>
       </div>
 
@@ -217,9 +203,6 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
       <nav ref={navRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {visibleItems.map((item, idx) => {
           if (item.section) {
-            if (collapsed) return (
-              <div key={idx} style={{ margin: '10px 12px 4px', borderTop: '1px solid #1e293b' }} />
-            )
             return (
               <div key={idx} style={{ padding: '10px 16px 4px' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#334155' }}>
@@ -237,12 +220,11 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
               key={item.path}
               to={item.path}
               className="sidebar-link"
-              data-tip={collapsed ? item.label : undefined}
               style={{
                 display: 'flex', alignItems: 'center',
                 gap: 10,
-                padding: collapsed ? '9px 0' : '8px 16px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
+                padding: '8px 16px',
+                justifyContent: 'flex-start',
                 margin: '1px 8px',
                 borderRadius: 8,
                 textDecoration: 'none',
@@ -257,75 +239,42 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; if (!active) e.currentTarget.style.color = '#94a3b8' }}
             >
               {Ico && <Ico style={{ width: 16, height: 16, flexShrink: 0 }} />}
-              {!collapsed && <span style={{ truncate: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.label}</span>}
-              {!collapsed && active && (
+              <span style={{ truncate: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.label}</span>
+              {active && (
                 <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.7)', flexShrink: 0 }} />
               )}
             </Link>
           )
         })}
 
-        {/* User Management (admin only) */}
-        {isAdmin && (
-          <>
-            <div style={{ margin: '8px 8px', borderTop: '1px solid #1e293b' }} />
-            <Link
-              to="/user-management"
-              className="sidebar-link"
-              data-tip={collapsed ? 'User Management' : undefined}
-              style={{
-                display: 'flex', alignItems: 'center',
-                gap: 10,
-                padding: collapsed ? '9px 0' : '8px 16px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                margin: '1px 8px',
-                borderRadius: 8,
-                textDecoration: 'none',
-                fontSize: 13.5,
-                fontWeight: location.pathname === '/user-management' ? 600 : 400,
-                color: location.pathname === '/user-management' ? '#fff' : '#94a3b8',
-                background: location.pathname === '/user-management' ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : 'transparent',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => { if (location.pathname !== '/user-management') { e.currentTarget.style.background = '#1e293b'; e.currentTarget.style.color = '#e2e8f0' } }}
-              onMouseLeave={e => { if (location.pathname !== '/user-management') { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8' } }}
-            >
-              <Icon.User style={{ width: 16, height: 16, flexShrink: 0 }} />
-              {!collapsed && <span>User Management</span>}
-            </Link>
-          </>
-        )}
       </nav>
 
       {/* Footer */}
-      <div style={{ padding: collapsed ? '12px 0' : '12px 14px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
-        {!collapsed && (
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
-                  {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
-                </span>
+      <div style={{ padding: '12px 14px', borderTop: '1px solid #1e293b', flexShrink: 0 }}>
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+                {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.fullName || user.username}
               </div>
-              <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.fullName || user.username}
-                </div>
-                {isAdmin && (
-                  <div style={{ fontSize: 10.5, color: '#818cf8', fontWeight: 600 }}>Administrator</div>
-                )}
-              </div>
+              {isAdmin && (
+                <div style={{ fontSize: 10.5, color: '#818cf8', fontWeight: 600 }}>Administrator</div>
+              )}
             </div>
           </div>
-        )}
+        </div>
         <button
           onClick={handleLogout}
-          data-tip={collapsed ? 'Logout' : undefined}
           style={{
             width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
             gap: 8,
-            padding: collapsed ? '8px 0' : '8px 12px',
+            padding: '8px 12px',
             borderRadius: 8,
             border: '1px solid #1e293b',
             background: 'transparent',
@@ -339,7 +288,7 @@ function Sidebar({ setIsAuthenticated, onCollapse }) {
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#1e293b' }}
         >
           <Icon.LogOut style={{ width: 15, height: 15, flexShrink: 0 }} />
-          {!collapsed && <span>Sign Out</span>}
+          <span>Sign Out</span>
         </button>
       </div>
     </aside>

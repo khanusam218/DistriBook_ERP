@@ -10,11 +10,25 @@ function getNextReceiptNo() {
   return `RCPT-${year}-${String((row?.maxNo || 0) + 1).padStart(4, '0')}`;
 }
 
+// Matches customerLedgerController's calculation exactly (opening_balance column + non-opening
+// entries). NOT the same as ledgerService.getCustomerBalance(), which sums every ledger row
+// including the OPENING_BALANCE entry — that entry is stored with inverted debit/credit signs
+// relative to the opening_balance column, so summing it in would give the wrong total.
+function getCustomerOutstanding(customer) {
+  const opening = Number(customer.opening_balance) || 0;
+  const row = db.prepare(
+    `SELECT COALESCE(SUM(debit - credit), 0) as total FROM customer_ledger WHERE customer_id = ? AND transaction_type != 'OPENING_BALANCE'`
+  ).get(customer.id);
+  return opening + Number(row.total || 0);
+}
+
 function postReceipt(r) {
   const { customer_id, amount, payment_method, bank_account_id, notes, receipt_date } = r;
   if (!customer_id || !amount || amount <= 0) return null;
+  if (payment_method && payment_method !== 'CASH' && !bank_account_id) return null;
   const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(customer_id);
   if (!customer) return null;
+  if (customer.customer_type === 'WHOLESALER' && getCustomerOutstanding(customer) <= 0) return null;
 
   const receipt_no = getNextReceiptNo();
   const date = receipt_date || new Date().toISOString().split('T')[0];

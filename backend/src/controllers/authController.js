@@ -1,6 +1,6 @@
 const {
   registerUser, authenticateUser, generateToken,
-  getAllUsers, getUserById, updateUser, deleteUser,
+  getAllUsers, getUserById, updateUser, deleteUser, verifyPassword,
 } = require('../services/authService');
 
 const db = require('../db/db');
@@ -95,6 +95,19 @@ exports.verifyToken = async (req, res) => {
   }
 };
 
+exports.verifyPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+    const ok = await verifyPassword(req.user.userId, password);
+    if (!ok) return res.status(401).json({ error: 'Incorrect password' });
+    res.json({ verified: true });
+  } catch (e) {
+    console.error('verifyPassword error:', e);
+    res.status(500).json({ error: 'Password verification failed' });
+  }
+};
+
 // ── User Management (admin only) ─────────────────────────────────────────────
 
 function requireAdmin(req, res) {
@@ -126,11 +139,16 @@ exports.createUser = async (req, res) => {
 
     // Resolve admin's business_owner_id so sub-user inherits the same business db
     const adminRow = db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(req.user.userId);
-    // null = legacy (shared thok.db); non-null = admin's own id (isolated db)
-    const inheritedOwnerId = adminRow?.business_owner_id ?? null;
 
     const user = await registerUser(username, email || `${username}@distribooks.local`, password, fullName, role || 'user');
-    // Sub-user inherits admin's business (null keeps them on shared db; id puts them on isolated db)
+
+    // If admin has their own business (non-null), sub-user inherits it (same company).
+    // If admin is legacy (null), sub-user gets their OWN isolated database.
+    const inheritedOwnerId = (adminRow?.business_owner_id != null)
+      ? adminRow.business_owner_id
+      : user.id;
+
+    // Sub-user inherits admin's business, or gets their own isolated DB
     db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(inheritedOwnerId, user.id);
 
     if (permissions) {

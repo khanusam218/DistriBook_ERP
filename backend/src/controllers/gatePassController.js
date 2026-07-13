@@ -378,7 +378,13 @@ exports.createReturn = (req, res) => {
         const qtyPcs = Number(item.qty_pieces) || 0;
         const usePieces = qty === 0 && qtyPcs > 0;
         const rate = Number(item.rate) || 0;
-        const amount = usePieces ? qtyPcs * rate : qty * rate;
+        // A return can mix CTN + loose pieces for the same item (e.g. "1 CTN + 3 pcs") —
+        // pricing only the CTN portion silently dropped the pieces' value.
+        const stock = item.stock_id
+          ? db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stock_id)
+          : null;
+        const piecesPerCtn = Number(stock?.pieces_per_ctn) || 1;
+        const amount = (qty * piecesPerCtn + qtyPcs) * rate;
         const net = amount;
 
         // 2. Save return item
@@ -643,7 +649,15 @@ exports.updateBookingItemRates = (req, res) => {
           'SELECT * FROM booking_order_items WHERE id = ? AND gate_pass_id = ?'
         ).get(item.id, id);
         if (!existing) continue;
-        const amount = Number(existing.qty_ctn) * rate;
+        // qty_ctn is a carton count, qty_pieces is the loose remainder — both must be
+        // converted to a piece total before pricing, or amount silently drops the
+        // remainder whenever the booked quantity isn't an exact multiple of carton size.
+        const stock = existing.stock_id
+          ? db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(existing.stock_id)
+          : null;
+        const piecesPerCtn = Number(stock?.pieces_per_ctn) || 1;
+        const totalPieces = Number(existing.qty_ctn) * piecesPerCtn + Number(existing.qty_pieces);
+        const amount = totalPieces * rate;
         db.prepare('UPDATE booking_order_items SET rate = ?, amount = ? WHERE id = ?')
           .run(rate, amount, item.id);
       }
@@ -670,7 +684,9 @@ exports.updateBookingItemRates = (req, res) => {
 
       let gpTotalQty = 0, gpTotalAmount = 0;
       for (const c of Object.values(consolidated)) {
-        if (c.qty_ctn <= 0) continue;
+        // Items booked as loose pieces only (qty_ctn = 0) must still be kept — skipping them
+        // here silently dropped them from Print GP / Small DO / totals after any rate edit.
+        if (c.qty_ctn <= 0 && c.total <= 0) continue;
         db.prepare(
           `INSERT INTO gate_pass_items
              (gate_pass_id, stock_id, item_code, item_description, quantity, rate, total)

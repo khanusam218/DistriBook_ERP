@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { Btn, Input, Select, Card, Alert, Empty, Table, PageHeader, SectionLabel, Icon, Spinner } from '../components/ui'
 
 const today = () => new Date().toISOString().split('T')[0]
@@ -31,6 +32,7 @@ export default function VendorPayments() {
   const save = async () => {
     if (!form.vendor_id) { setError('Select a vendor'); return }
     if (!form.amount || parseFloat(form.amount) <= 0) { setError('Enter a valid amount'); return }
+    if (form.payment_method !== 'CASH' && !form.bank_account_id) { setError('Select a bank account'); return }
     setSaving(true); setError('')
     try {
       await api.post('/vendor-payments', {
@@ -54,7 +56,7 @@ export default function VendorPayments() {
       await api.delete(`/vendor-payments/${id}`)
       loadHistory()
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to delete')
+      toast(e.response?.data?.error || 'Failed to delete')
     }
   }
 
@@ -97,7 +99,7 @@ export default function VendorPayments() {
             <Input
               label="Amount (Rs.)"
               required
-              type="number"
+              type="number" onWheel={e => e.target.blur()}
               value={form.amount || ''}
               min="0"
               step="0.01"

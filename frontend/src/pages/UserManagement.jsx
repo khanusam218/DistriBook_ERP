@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { isValidEmail } from '../utils/validation'
 import {
   PageHeader, Card, Input, Select, Btn, Badge, Alert, Empty, Spinner, Table, Modal, SectionLabel, Icon
@@ -121,7 +122,7 @@ function UserModal({ user, onClose, onSaved }) {
         role: form.role,
         isActive: form.isActive,
         permissions: form.role === 'admin' ? {} : form.permissions,
-        ...(form.password.trim() ? { password: form.password } : {}),
+        ...(form.password.trim() ? { password: form.password.trim() } : {}),
       }
       if (isNew) {
         await api.post('/auth/users', payload)
@@ -312,7 +313,7 @@ export default function UserManagement() {
       await api.delete(`/auth/users/${user.id}`)
       load()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error deleting user')
+      toast(e.response?.data?.error || 'Error deleting user')
     }
   }
 
@@ -321,7 +322,7 @@ export default function UserManagement() {
       await api.put(`/auth/users/${user.id}`, { isActive: !user.is_active })
       load()
     } catch (e) {
-      alert(e.response?.data?.error || 'Error updating user')
+      toast(e.response?.data?.error || 'Error updating user')
     }
   }
 

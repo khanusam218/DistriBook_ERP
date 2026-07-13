@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { isValidPhone } from '../utils/validation'
@@ -40,18 +41,16 @@ function ProfileModal({ title, form, onChange, onSave, onClose, saving }) {
           </div>
           <div>
             <label className="form-label">Base Monthly Salary (Rs)</label>
-            <input type="number" min="0" step="any"
+            <input type="number" onWheel={e => e.target.blur()} min="0" step="any"
               value={form.baseSalary === 0 || form.baseSalary === null || form.baseSalary === undefined || form.baseSalary === '' ? '' : form.baseSalary}
               onChange={e => onChange('baseSalary', e.target.value)}
-              onWheel={e => e.target.blur()}
               placeholder="e.g. 25000" className="db-input" />
           </div>
           <div>
             <label className="form-label">OT Rate (Rs / hour)</label>
-            <input type="number" min="0" step="any"
+            <input type="number" onWheel={e => e.target.blur()} min="0" step="any"
               value={form.otRate === 0 || form.otRate === null || form.otRate === undefined || form.otRate === '' ? '' : form.otRate}
               onChange={e => onChange('otRate', e.target.value)}
-              onWheel={e => e.target.blur()}
               placeholder="e.g. 150" className="db-input" />
           </div>
         </div>
@@ -259,8 +258,7 @@ function LedgerEntryModal({ type, employee, gatePasses, onSave, onClose, saving 
           {type === 'OVERTIME' ? (
             <div>
               <label className="form-label">OT Hours <span className="req">*</span></label>
-              <input type="number" min="0.01" step="0.5" value={hours} onChange={e => setHours(e.target.value)}
-                onWheel={e => e.target.blur()}
+              <input type="number" onWheel={e => e.target.blur()} min="0.01" step="0.5" value={hours} onChange={e => setHours(e.target.value)}
                 placeholder="e.g. 8" className="db-input" />
               {hours && parseFloat(hours) > 0 && (
                 <p style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginTop: 4 }}>
@@ -271,8 +269,7 @@ function LedgerEntryModal({ type, employee, gatePasses, onSave, onClose, saving 
           ) : (
             <div>
               <label className="form-label">Amount (Rs) <span className="req">*</span></label>
-              <input type="number" min="0.01" step="any" value={amount} onChange={e => setAmount(e.target.value)}
-                onWheel={e => e.target.blur()}
+              <input type="number" onWheel={e => e.target.blur()} min="0.01" step="any" value={amount} onChange={e => setAmount(e.target.value)}
                 placeholder="e.g. 5000" className="db-input" />
             </div>
           )}
@@ -360,7 +357,7 @@ function LedgerView({ employeeId, onBack }) {
       setEntryModal(null); await load()
     } catch (e) {
       const msg = e.response?.data?.error || e.response?.statusText || e.message || 'Unknown error'
-      alert(msg)
+      toast(msg)
     }
     setSaving(false)
   }
@@ -371,7 +368,7 @@ function LedgerView({ employeeId, onBack }) {
     try {
       await api.delete(`/employees/${employeeId}/ledger/${deleteId}`)
       setDeleteId(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error') }
+    } catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   if (loading) return <div style={{ padding: 32, color: '#64748b', display: 'flex', alignItems: 'center', gap: 10 }}><span className="spinner" />Loading ledger…</div>
@@ -701,21 +698,21 @@ export default function Employees() {
   }
 
   const save = async () => {
-    if (!form.name.trim()) return alert('Name is required')
-    if (!isValidPhone(form.mobile)) return alert('Mobile number is invalid. Use a format like 0300-1234567.')
+    if (!form.name.trim()) return toast('Name is required')
+    if (!isValidPhone(form.mobile)) return toast('Mobile number is invalid. Use a format like 0300-1234567.')
     setSaving(true)
     try {
       const payload = { name: form.name.trim(), mobile: form.mobile, role: form.role, baseSalary: Number(form.baseSalary) || 0, otRate: Number(form.otRate) || 0 }
       if (modal === 'add') await api.post('/employees', payload)
       else await api.put(`/employees/${modal}`, payload)
       setModal(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const del = async () => {
     try { await api.delete(`/employees/${deleteId}`); setDeleteId(null); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error deleting') }
+    catch (e) { toast(e.response?.data?.error || 'Error deleting') }
   }
 
   const allRoles = [...new Set(employees.map(e => e.role).filter(Boolean))].sort()

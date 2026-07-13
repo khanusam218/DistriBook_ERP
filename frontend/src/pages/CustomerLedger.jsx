@@ -6,6 +6,9 @@ import autoTable from 'jspdf-autotable'
 import {
   PageHeader, Card, Btn, Badge, Alert, Empty, Spinner, Table, SectionLabel
 } from '../components/ui'
+import ErrorBoundary from '../components/ErrorBoundary'
+import PrintInvoice from '../components/InvoicePreview'
+import { toast } from '../components/Toast'
 
 const fmt  = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
 const today = () => new Date().toISOString().split('T')[0]
@@ -47,6 +50,17 @@ export default function CustomerLedger() {
   const [viewAll, setViewAll]               = useState(false)
   const [vaSearch, setVaSearch]             = useState('')
   const [vaSort, setVaSort]                 = useState('balance_desc')
+
+  // Invoice preview (opened by clicking a Sale entry's description)
+  const [printSale, setPrintSale]           = useState(null)
+  const openSalePreview = async (saleId) => {
+    try {
+      const r = await api.get(`/sales/${saleId}`)
+      setPrintSale(r.data)
+    } catch (e) {
+      toast(e.response?.data?.error || 'Failed to load invoice')
+    }
+  }
 
   useEffect(() => {
     api.get('/customers').then(r => {
@@ -522,7 +536,16 @@ export default function CustomerLedger() {
                         <td style={{ color:'#94a3b8' }}>{i+1}</td>
                         <td style={{ whiteSpace:'nowrap', color:'#64748b', fontSize:12 }}>{entry.transaction_date}</td>
                         <td><Badge color={TYPE_COLOR[entry.transaction_type] || 'slate'}>{entry.transaction_type}</Badge></td>
-                        <td>{entry.description}</td>
+                        <td>
+                          {entry.reference_type === 'sale' && entry.reference_id ? (
+                            <button
+                              onClick={() => openSalePreview(entry.reference_id)}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', fontWeight: 600, fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                            >
+                              {entry.description}
+                            </button>
+                          ) : entry.description}
+                        </td>
                         <td style={{ textAlign:'right', color: entry.debit > 0 ? '#dc2626' : '#cbd5e1', fontVariantNumeric:'tabular-nums', fontWeight: entry.debit > 0 ? 600 : 400 }}>
                           {entry.debit > 0 ? `Rs. ${fmt(entry.debit)}` : '—'}
                         </td>
@@ -558,6 +581,12 @@ export default function CustomerLedger() {
         <Card>
           <Empty message="Search for a customer or click View All" hint="Type a name, shop or code in the search box above" />
         </Card>
+      )}
+
+      {printSale && (
+        <ErrorBoundary key={printSale.id} onClose={() => setPrintSale(null)}>
+          <PrintInvoice sale={printSale} onClose={() => setPrintSale(null)} />
+        </ErrorBoundary>
       )}
     </div>
   )

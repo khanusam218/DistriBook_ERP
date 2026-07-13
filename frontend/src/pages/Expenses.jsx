@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 
 const today = () => new Date().toISOString().split('T')[0]
 const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
@@ -73,7 +74,7 @@ export default function Expenses() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this expense?')) return
-    try { await api.delete(`/expenses/${id}`); await load() } catch { alert('Delete failed') }
+    try { await api.delete(`/expenses/${id}`); await load() } catch { toast('Delete failed') }
   }
 
   const applyFilter = (data) => {
@@ -127,7 +128,7 @@ export default function Expenses() {
               Amount (Rs.) <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <input
-              type="number" min="0" step="0.01"
+              type="number" onWheel={e => e.target.blur()} min="0" step="0.01"
               value={form.amount} onChange={set('amount')}
               className="db-input" placeholder="0.00" style={{ width: '100%' }}
             />

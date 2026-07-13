@@ -6,6 +6,7 @@ const { authenticateJWT } = require('../middleware/authMiddleware');
 router.post('/register', c.register);
 router.post('/login', c.login);
 router.get('/verify', authenticateJWT, c.verifyToken);
+router.post('/verify-password', authenticateJWT, c.verifyPassword);
 
 // User management — all require valid JWT; admin check is inside controller
 router.get('/users', authenticateJWT, c.listUsers);

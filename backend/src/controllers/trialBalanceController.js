@@ -101,7 +101,7 @@ exports.getTrialBalance = (req, res) => {
          ON v.id = vl.vendor_id AND vl.transaction_type != 'OPENING_BALANCE'
        GROUP BY v.id, v.company_name, v.opening_balance`
     ).all().map(v => {
-      const balance = v.opening_balance + v.txn_credit - v.txn_debit;
+      const balance = v.opening_balance + v.txn_debit - v.txn_credit;
       return {
         id: v.id,
         account_name: v.account_name,

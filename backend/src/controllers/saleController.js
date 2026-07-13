@@ -84,9 +84,9 @@ exports.create = (req, res) => {
         const itemTotal = Math.round(item.productQty * item.productRate * (1 - discount / 100) * 100) / 100;
         totalAmount += itemTotal;
         db.prepare(
-          `INSERT INTO sale_items (sale_id, stock_id, item_code, product_name, product_rate, product_qty, total, description, discount)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(saleId, item.stockId, item.itemCode || '', item.productName, item.productRate, item.productQty, itemTotal, item.description || '', discount);
+          `INSERT INTO sale_items (sale_id, stock_id, item_code, product_name, product_rate, product_qty, total, description, discount, qty_ctn, qty_loose_pieces, pieces_per_ctn)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(saleId, item.stockId, item.itemCode || '', item.productName, item.productRate, item.productQty, itemTotal, item.description || '', discount, Number(item.qtyCtn) || 0, Number(item.qtyPieces) || 0, Number(item.piecesPerCtn) || 1);
         db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run(item.productQty, item.stockId);
       }
@@ -141,9 +141,9 @@ exports.update = (req, res) => {
         const itemTotal = Math.round(item.productQty * item.productRate * (1 - discount / 100) * 100) / 100;
         totalAmount += itemTotal;
         db.prepare(
-          `INSERT INTO sale_items (sale_id, stock_id, item_code, product_name, product_rate, product_qty, total, description, discount)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(id, item.stockId, item.itemCode || '', item.productName, item.productRate, item.productQty, itemTotal, item.description || '', discount);
+          `INSERT INTO sale_items (sale_id, stock_id, item_code, product_name, product_rate, product_qty, total, description, discount, qty_ctn, qty_loose_pieces, pieces_per_ctn)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(id, item.stockId, item.itemCode || '', item.productName, item.productRate, item.productQty, itemTotal, item.description || '', discount, Number(item.qtyCtn) || 0, Number(item.qtyPieces) || 0, Number(item.piecesPerCtn) || 1);
         db.prepare('UPDATE stocks SET quantity = quantity - ? WHERE id = ?').run(item.productQty, item.stockId);
       }
 

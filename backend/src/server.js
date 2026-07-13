@@ -41,7 +41,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 db.initialize().then(() => {
   const authRoutes        = require('./routes/auth');
@@ -66,6 +66,7 @@ db.initialize().then(() => {
   const posRoutes         = require('./routes/pos');
   const companyRoutes     = require('./routes/company');
   const expenseRoutes     = require('./routes/expenses');
+  const backupRoutes      = require('./routes/backup');
 
   // Auth routes — no db middleware (auth controller uses db.authDb directly)
   app.use('/api/auth', authRoutes);
@@ -92,23 +93,50 @@ db.initialize().then(() => {
   app.use('/api/pos',             authenticateJWT, dbMiddleware, posRoutes);
   app.use('/api/company',         authenticateJWT, dbMiddleware, companyRoutes);
   app.use('/api/expenses',        authenticateJWT, dbMiddleware, expenseRoutes);
+  app.use('/api/backup',          authenticateJWT, backupRoutes);
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-  // Serve React frontend in production
-  const frontendDist = path.join(__dirname, '..', '..', 'public');
-  if (require('fs').existsSync(frontendDist)) {
+  // Serve React frontend in production (works for both dev and packaged)
+  const fs = require('fs');
+  const possibleDirs = [
+    path.join(__dirname, '..', '..', 'public'),           // dev mode
+    path.join(__dirname, 'public'),                        // packaged (pkg snapshot)
+    path.join(path.dirname(process.execPath), 'public'),   // exe directory
+  ];
+  const frontendDist = possibleDirs.find(d => fs.existsSync(path.join(d, 'index.html')));
+  if (frontendDist) {
     app.use(express.static(frontendDist));
-    // All non-API routes serve the React app (for client-side routing)
     app.get('*', (req, res) => {
       res.sendFile(path.join(frontendDist, 'index.html'));
     });
   }
 
-  app.listen(PORT, () => {
+  // Global error handler — catches any unhandled error thrown or passed to next(err)
+  // This ensures every route error always gets a JSON response instead of hanging
+  app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+    console.error('[Express error]', req.method, req.path, '—', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message || 'Internal server error' });
+    }
+  });
+
+  const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${PORT} already in use — server already running, skipping.`);
+    } else {
+      throw err;
+    }
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
+});
+
+// Catch unhandled promise rejections so they don't silently crash route handlers
+process.on('unhandledRejection', (reason) => {
+  console.error('[Unhandled rejection]', reason);
 });

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import {
   Btn, Input, NumInput, Select, SearchBar, Modal, Card, Badge, Empty,
@@ -133,21 +134,21 @@ export default function Products() {
   }
 
   const save = async () => {
-    if (!form.vendorId) return alert('Please select a vendor')
-    if (!form.productName) return alert('Product name is required')
+    if (!form.vendorId) return toast('Please select a vendor')
+    if (!form.productName) return toast('Product name is required')
     setSaving(true)
     try {
       const payload = { ...form, vendorId: Number(form.vendorId) }
       if (modal === 'add') await api.post('/products', payload)
       else await api.put(`/products/${modal}`, payload)
       setModal(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const del = async (id) => {
     try { await api.delete(`/products/${id}`); setDeleteId(null); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error deleting') }
+    catch (e) { toast(e.response?.data?.error || 'Error deleting') }
   }
 
   const filtered = products.filter(p => {

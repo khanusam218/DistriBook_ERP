@@ -2,8 +2,12 @@ const { AsyncLocalStorage } = require('async_hooks');
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const { wasmBuffer } = require('./wasm-data');
 
-const DB_DIR = path.join(__dirname, '..', '..', '..');
+// Database directory: env var (set by Electron), CWD when packaged, or dev path
+const DEV_DIR = path.join(__dirname, '..', '..', '..');
+const DB_DIR = process.env.DB_DIR || DEV_DIR;
 const AUTH_DB_PATH = path.join(DB_DIR, 'thok.db');
 
 let SQL = null;
@@ -16,11 +20,50 @@ class DbWrapper {
     this.sqliteDb = sqliteDb;
     this.filePath = filePath;
     this._inTx = false;
+    this._saveTimer = null;
+    this._writing = false;
   }
 
+  // Async debounced save — never blocks the event loop.
+  // Schedules a write 200ms after the last change; multiple rapid writes = one disk write.
   _save() {
-    const data = this.sqliteDb.export();
-    fs.writeFileSync(this.filePath, Buffer.from(data));
+    if (this._saveTimer) clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      this._writeAsync();
+    }, 200);
+  }
+
+  // Non-blocking async disk write
+  _writeAsync() {
+    if (this._writing) return; // skip if previous write still in progress
+    try {
+      const data = this.sqliteDb.export();
+      const buf = Buffer.from(data);
+      this._writing = true;
+      fs.writeFile(this.filePath, buf, (err) => {
+        this._writing = false;
+        if (err) console.error(`[DB] Save error (${path.basename(this.filePath)}):`, err.message);
+      });
+    } catch (e) {
+      this._writing = false;
+      console.error('[DB] Export error:', e.message);
+    }
+  }
+
+  // Synchronous save — used only for transactions and explicit flushes (shutdown, restore).
+  // Cancels any pending debounced write and writes immediately.
+  _saveSync() {
+    if (this._saveTimer) {
+      clearTimeout(this._saveTimer);
+      this._saveTimer = null;
+    }
+    try {
+      const data = this.sqliteDb.export();
+      fs.writeFileSync(this.filePath, Buffer.from(data));
+    } catch (e) {
+      console.error('[DB] Sync save error:', e.message);
+    }
   }
 
   _rowsToObjects(stmt) {
@@ -55,12 +98,19 @@ class DbWrapper {
         const changesResult = self.sqliteDb.exec('SELECT changes()');
         const lastInsertRowid = rowidResult[0]?.values[0][0] ?? 0;
         const changes = changesResult[0]?.values[0][0] ?? 0;
+        // Only schedule async save when not inside a transaction
+        // (transactions do one sync save at commit, which is more reliable)
         if (!self._inTx) self._save();
         return { lastInsertRowid, changes };
       },
     };
   }
 
+  // Transactions: do ONE debounced async save at commit.
+  // Individual steps inside the transaction do NOT trigger saves.
+  // Async (not sync) so a slow disk write (e.g. antivirus scanning the file)
+  // never blocks the event loop — the commit is already durable in memory,
+  // this write is just persistence and shouldn't hold up the HTTP response.
   transaction(fn) {
     const self = this;
     return function (...args) {
@@ -69,10 +119,10 @@ class DbWrapper {
       try {
         const result = fn(...args);
         self.sqliteDb.run('COMMIT');
-        self._save();
+        self._save(); // One debounced async write after all changes are committed
         return result;
       } catch (e) {
-        self.sqliteDb.run('ROLLBACK');
+        try { self.sqliteDb.run('ROLLBACK'); } catch {}
         throw e;
       } finally {
         self._inTx = false;
@@ -115,9 +165,8 @@ function initAuthTables(w) {
   try { w.sqliteDb.run('ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT "{}"'); } catch {}
   try { w.sqliteDb.run('ALTER TABLE users ADD COLUMN business_name TEXT DEFAULT ""'); } catch {}
   try { w.sqliteDb.run('ALTER TABLE users ADD COLUMN business_owner_id INTEGER DEFAULT NULL'); } catch {}
-  // Ensure first-ever user is admin
   w.sqliteDb.run("UPDATE users SET role = 'admin' WHERE id = (SELECT MIN(id) FROM users)");
-  w._save();
+  w._saveSync();
 }
 
 // ── Business tables (all data tables — NOT users) ─────────────────────────────
@@ -125,7 +174,6 @@ function initBusinessTables(w) {
   const s = w.sqliteDb;
   const tryRun = (sql) => { try { s.run(sql); } catch {} };
 
-  // Core data tables (from migrate.sql, minus users)
   s.run(`CREATE TABLE IF NOT EXISTS stocks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_name TEXT NOT NULL, product_name TEXT NOT NULL,
@@ -240,6 +288,9 @@ function initBusinessTables(w) {
   )`);
   tryRun('ALTER TABLE sale_items ADD COLUMN description TEXT DEFAULT ""');
   tryRun('ALTER TABLE sale_items ADD COLUMN discount REAL DEFAULT 0');
+  tryRun('ALTER TABLE sale_items ADD COLUMN qty_ctn INTEGER DEFAULT 0');
+  tryRun('ALTER TABLE sale_items ADD COLUMN qty_loose_pieces INTEGER DEFAULT 0');
+  tryRun('ALTER TABLE sale_items ADD COLUMN pieces_per_ctn INTEGER DEFAULT 1');
 
   s.run(`CREATE TABLE IF NOT EXISTS sale_returns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,7 +308,6 @@ function initBusinessTables(w) {
     total REAL NOT NULL DEFAULT 0
   )`);
 
-  // Products
   s.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT, vendor_id INTEGER NOT NULL,
     product_name TEXT NOT NULL, product_description TEXT DEFAULT '',
@@ -268,7 +318,6 @@ function initBusinessTables(w) {
   )`);
   tryRun('ALTER TABLE products ADD COLUMN product_code TEXT DEFAULT ""');
 
-  // Employees
   s.run(`CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
     mobile TEXT DEFAULT '', role TEXT DEFAULT '', base_salary REAL DEFAULT 0,
@@ -287,7 +336,6 @@ function initBusinessTables(w) {
   tryRun('ALTER TABLE employee_ledger ADD COLUMN bank_account_id INTEGER DEFAULT NULL');
   tryRun('ALTER TABLE employee_ledger ADD COLUMN payment_method TEXT DEFAULT "CASH"');
 
-  // Gate pass
   s.run(`CREATE TABLE IF NOT EXISTS gate_pass_staff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL, type TEXT NOT NULL CHECK(type IN ('SALE_REP','DELIVERY_MAN')),
@@ -348,7 +396,6 @@ function initBusinessTables(w) {
     rate REAL DEFAULT 0, amount REAL DEFAULT 0, net REAL DEFAULT 0
   )`);
 
-  // Bank accounts
   s.run(`CREATE TABLE IF NOT EXISTS bank_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT, account_name TEXT NOT NULL,
     account_type TEXT NOT NULL DEFAULT 'CASH', bank_name TEXT DEFAULT '',
@@ -384,50 +431,35 @@ function initBusinessTables(w) {
     notes TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Seed default Cash account for new databases
   const cashCount = s.exec('SELECT COUNT(*) FROM bank_accounts');
   const count = cashCount[0]?.values[0][0] ?? 0;
   if (count === 0) {
     s.run(`INSERT INTO bank_accounts (account_name, account_type, opening_balance) VALUES ('Cash in Hand', 'CASH', 0)`);
   }
 
-  // Company settings (single row)
   s.run(`CREATE TABLE IF NOT EXISTS company_settings (
     id INTEGER PRIMARY KEY DEFAULT 1,
-    name TEXT DEFAULT '',
-    tagline TEXT DEFAULT '',
-    address TEXT DEFAULT '',
-    city TEXT DEFAULT '',
-    phone TEXT DEFAULT '',
-    mobile TEXT DEFAULT '',
-    email TEXT DEFAULT '',
-    website TEXT DEFAULT '',
-    ntn TEXT DEFAULT '',
-    strn TEXT DEFAULT '',
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    name TEXT DEFAULT '', tagline TEXT DEFAULT '', address TEXT DEFAULT '',
+    city TEXT DEFAULT '', phone TEXT DEFAULT '', mobile TEXT DEFAULT '',
+    email TEXT DEFAULT '', website TEXT DEFAULT '', ntn TEXT DEFAULT '',
+    strn TEXT DEFAULT '', updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`);
-  // Ensure the single settings row exists
   const csCount = s.exec('SELECT COUNT(*) FROM company_settings');
   if ((csCount[0]?.values[0][0] ?? 0) === 0) {
     s.run(`INSERT INTO company_settings (id) VALUES (1)`);
   }
+  tryRun('ALTER TABLE company_settings ADD COLUMN delete_password_hash TEXT DEFAULT NULL');
 
-  // Expenses table
   s.run(`CREATE TABLE IF NOT EXISTS expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expense_no TEXT NOT NULL,
-    expense_date TEXT NOT NULL DEFAULT (date('now')),
-    category TEXT NOT NULL,
-    description TEXT DEFAULT '',
-    amount REAL NOT NULL DEFAULT 0,
-    payment_method TEXT NOT NULL DEFAULT 'CASH',
+    expense_no TEXT NOT NULL, expense_date TEXT NOT NULL DEFAULT (date('now')),
+    category TEXT NOT NULL, description TEXT DEFAULT '',
+    amount REAL NOT NULL DEFAULT 0, payment_method TEXT NOT NULL DEFAULT 'CASH',
     bank_account_id INTEGER REFERENCES bank_accounts(id),
-    notes TEXT DEFAULT '',
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Backfill: create stock entries for any products that don't have a matching stock yet
   try {
     const orphanProducts = s.exec(
       `SELECT p.product_name, p.product_description, p.packing_unit, p.pieces_per_ctn,
@@ -453,8 +485,6 @@ function initBusinessTables(w) {
     }
   } catch (_) {}
 
-  // Migration: convert ADVANCE entries from debit side to credit side
-  // (old design used debit; corrected design uses credit since advance = money given TO employee)
   try {
     const badAdvances = s.exec(
       `SELECT id, employee_id, debit FROM employee_ledger WHERE transaction_type = 'ADVANCE' AND debit > 0 AND credit = 0`
@@ -464,7 +494,6 @@ function initBusinessTables(w) {
         const [id, , debit] = row;
         s.run(`UPDATE employee_ledger SET debit = 0, credit = ? WHERE id = ?`, [debit, id]);
       }
-      // Recalculate running balances for affected employees
       const empIds = [...new Set(badAdvances[0].values.map(r => r[1]))];
       for (const empId of empIds) {
         const ledger = s.exec(
@@ -482,7 +511,7 @@ function initBusinessTables(w) {
     }
   } catch (_) {}
 
-  w._save();
+  w._saveSync();
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -490,13 +519,23 @@ const db = {
   authDb: null,
 
   async initialize() {
-    SQL = await initSqlJs();
+    SQL = await initSqlJs({ wasmBinary: wasmBuffer() });
     const sqliteDb = loadOrCreate(AUTH_DB_PATH);
     const authWrapper = new DbWrapper(sqliteDb, AUTH_DB_PATH);
     db.authDb = authWrapper;
     initAuthTables(authWrapper);
     initBusinessTables(authWrapper);
-    // authDb also serves as the legacy business db (users with business_owner_id = NULL)
+
+    const userCount = authWrapper.sqliteDb.exec('SELECT COUNT(*) FROM users');
+    if ((userCount[0]?.values[0][0] ?? 0) === 0) {
+      const hash = bcrypt.hashSync('admin123', 10);
+      authWrapper.sqliteDb.run(
+        'INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)',
+        ['hafizluqman', 'hafizluqman@distribooks.local', hash, 'Hafiz Luqman', 'admin']
+      );
+      authWrapper._saveSync();
+      console.log('Default admin user created (hafizluqman / admin123)');
+    }
   },
 
   async getBusinessDb(ownerId) {
@@ -514,7 +553,23 @@ const db = {
     storage.run(wrapper, callback);
   },
 
-  // Proxy methods — route to business db in request context, or authDb as fallback
+  async reload() {
+    if (db.authDb?.sqliteDb) {
+      try { db.authDb.sqliteDb.close(); } catch {}
+    }
+    for (const [, wrapper] of bizDbCache) {
+      try { wrapper.sqliteDb.close(); } catch {}
+    }
+    bizDbCache.clear();
+
+    const sqliteDb = loadOrCreate(AUTH_DB_PATH);
+    const authWrapper = new DbWrapper(sqliteDb, AUTH_DB_PATH);
+    db.authDb = authWrapper;
+    initAuthTables(authWrapper);
+    initBusinessTables(authWrapper);
+    console.log('Database reloaded from disk after restore.');
+  },
+
   prepare(sql) {
     return (storage.getStore() || db.authDb).prepare(sql);
   },
@@ -530,5 +585,18 @@ const db = {
 
   pragma() {},
 };
+
+// Flush all pending debounced saves before process exits (prevents data loss)
+function flushAll() {
+  if (db.authDb) {
+    try { db.authDb._saveSync(); } catch {}
+  }
+  for (const wrapper of bizDbCache.values()) {
+    try { wrapper._saveSync(); } catch {}
+  }
+}
+process.on('exit', flushAll);
+process.on('SIGINT', () => { flushAll(); process.exit(0); });
+process.on('SIGTERM', () => { flushAll(); process.exit(0); });
 
 module.exports = db;

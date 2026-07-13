@@ -56,7 +56,7 @@ exports.getOverview = (req, res) => {
     // â”€â”€ Payables (we owe vendors) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const payablesRows = db.prepare(`
       SELECT v.id, v.opening_balance + COALESCE(
-        (SELECT SUM(credit - debit) FROM vendor_ledger
+        (SELECT SUM(debit - credit) FROM vendor_ledger
          WHERE vendor_id = v.id AND transaction_type != 'OPENING_BALANCE'), 0
       ) as bal FROM vendors v
     `).all();

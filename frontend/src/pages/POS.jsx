@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { getCompanyInfo } from '../utils/companyInfo'
 
@@ -272,6 +273,7 @@ function ProductCard({ product, cartQtyMap, onAdd }) {
 // ── Main POS component ────────────────────────────────────────────────────────
 
 export default function POS() {
+  const navigate = useNavigate()
   // Data
   const [products, setProducts] = useState([])
   const [bankAccounts, setBankAccounts] = useState([])
@@ -526,11 +528,8 @@ export default function POS() {
     <div style={{ display: 'flex', flexDirection: 'column', background: '#0f172a', overflow: 'hidden', height: '100vh', width: '100%' }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────────── */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #1e1b4b, #312e81)', color: '#fff', padding: '10px 20px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #1e1b4b, #312e81)', color: '#fff', padding: '10px 20px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative', zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1={3} y1={6} x2={21} y2={6}/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>{getCompanyInfo().name || 'DistriBooks'}</div>
             <div style={{ fontSize: 11, color: '#a5b4fc' }}>Point of Sale</div>
@@ -542,7 +541,11 @@ export default function POS() {
           </div>
           <div style={{ fontSize: 11, color: '#94a3b8' }}>{today()}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={() => navigate('/dashboard')}
+            style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#e2e8f0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            ← Dashboard
+          </button>
           <button onClick={() => setShowHistory(true)}
             style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#e2e8f0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
             Bill History
@@ -678,7 +681,7 @@ export default function POS() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
                           <button onClick={() => item.qty > 1 ? updateCart(item.stock_id, 'qty', item.qty - 1) : removeFromCart(item.stock_id)}
                             style={{ width: 20, height: 20, borderRadius: 5, background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>−</button>
-                          <input type="number" value={item.qty} min={1} max={item.maxQty}
+                          <input type="number" onWheel={e => e.target.blur()} value={item.qty} min={1} max={item.maxQty}
                             onChange={e => updateCart(item.stock_id, 'qty', Math.max(1, Math.min(item.maxQty, Number(e.target.value) || 1)))}
                             style={{ width: 28, textAlign: 'center', border: '1.5px solid #e2e8f0', borderRadius: 6, fontSize: 11.5, padding: '2px 0' }} />
                           <button onClick={() => item.qty < item.maxQty && updateCart(item.stock_id, 'qty', item.qty + 1)}
@@ -687,13 +690,13 @@ export default function POS() {
                         </div>
                       </td>
                       <td style={{ padding: '8px 4px' }}>
-                        <input type="number" value={item.rate === 0 ? '' : item.rate} min={0}
+                        <input type="number" onWheel={e => e.target.blur()} value={item.rate === 0 ? '' : item.rate} min={0}
                           onChange={e => updateCart(item.stock_id, 'rate', Number(e.target.value) || 0)}
                           placeholder="Rate"
                           style={{ width: '100%', textAlign: 'right', border: '1.5px solid #e2e8f0', borderRadius: 6, fontSize: 11.5, padding: '3px 4px' }} />
                       </td>
                       <td style={{ padding: '8px 4px' }}>
-                        <input type="number" value={item.discount || ''} min={0} placeholder="0"
+                        <input type="number" onWheel={e => e.target.blur()} value={item.discount || ''} min={0} placeholder="0"
                           onChange={e => updateCart(item.stock_id, 'discount', Number(e.target.value) || 0)}
                           style={{ width: '100%', textAlign: 'right', border: '1.5px solid #e2e8f0', borderRadius: 6, fontSize: 11.5, padding: '3px 4px' }} />
                       </td>
@@ -719,7 +722,7 @@ export default function POS() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disc (Rs.)</label>
-              <input type="number" value={overallDiscount} min={0} placeholder="0"
+              <input type="number" onWheel={e => e.target.blur()} value={overallDiscount} min={0} placeholder="0"
                 onChange={e => setOverallDiscount(e.target.value)}
                 style={{ flex: 1, border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12.5, textAlign: 'right', background: '#fff' }} />
             </div>
@@ -743,7 +746,7 @@ export default function POS() {
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash Received</label>
-                <input type="number" value={cashReceived} min={0} placeholder={fmt(grandTotal)}
+                <input type="number" onWheel={e => e.target.blur()} value={cashReceived} min={0} placeholder={fmt(grandTotal)}
                   onChange={e => setCashReceived(e.target.value)}
                   style={{ width: '100%', border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '6px 10px', fontSize: 13 }} />
               </div>

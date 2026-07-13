@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import { isValidEmail, isValidPhone } from '../utils/validation'
 import {
@@ -138,13 +139,13 @@ export default function Customers() {
       if (modal === 'add') await api.post('/customers', form)
       else await api.put(`/customers/${modal}`, form)
       setModal(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const del = async (id) => {
     try { await api.delete(`/customers/${id}`); setDeleteId(null); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error deleting') }
+    catch (e) { toast(e.response?.data?.error || 'Error deleting') }
   }
 
   const filtered = customers.filter(c => {

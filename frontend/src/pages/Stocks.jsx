@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import {
   Btn, Input, NumInput, Select, SearchBar, Modal, Card, Badge, Alert, Empty,
@@ -64,8 +65,8 @@ function AddModal({ vendors, allProducts, onSave, onClose, saving }) {
   const readyRows = rows.filter(r => r.productId)
 
   const handleSave = () => {
-    if (!vendorId) return alert('Select a vendor')
-    if (readyRows.length === 0) return alert('Select at least one product')
+    if (!vendorId) return toast('Select a vendor')
+    if (readyRows.length === 0) return toast('Select at least one product')
     onSave(readyRows.map(r => ({
       companyName: r.productData?.company_name || '',
       productName: r.productData?.product_name || '',
@@ -146,14 +147,14 @@ function AddModal({ vendors, allProducts, onSave, onClose, saving }) {
                         className="db-input"
                         style={{ width: 140, fontFamily: 'monospace' }} />
                       <span style={{ fontSize: 12, color: '#64748b' }}>CTN</span>
-                      <input type="number" min="0" value={row.qtyCtn || ''}
+                      <input type="number" onWheel={e => e.target.blur()} min="0" value={row.qtyCtn || ''}
                         onChange={e => updateRow(row.key, 'qtyCtn', e.target.value)}
                         placeholder="0"
                         className="db-input"
                         style={{ width: 64, textAlign: 'center' }} />
                       <span style={{ color: '#94a3b8', fontSize: 14, fontWeight: 500 }}>+</span>
                       <span style={{ fontSize: 12, color: '#64748b' }}>Pcs</span>
-                      <input type="number" min="0" value={row.qtyPcs || ''}
+                      <input type="number" onWheel={e => e.target.blur()} min="0" value={row.qtyPcs || ''}
                         onChange={e => updateRow(row.key, 'qtyPcs', e.target.value)}
                         onKeyDown={e => {
                           if (e.key === 'Tab' && !e.shiftKey && idx === rows.length - 1) {
@@ -316,13 +317,13 @@ export default function Stocks() {
         await api.post('/stocks', payload)
       }
       setModal(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const saveEdit = async () => {
-    if (!form.companyName) return alert('Company name is required')
-    if (!form.productName) return alert('Product name is required')
+    if (!form.companyName) return toast('Company name is required')
+    if (!form.productName) return toast('Product name is required')
     const quantity = Number(form.qtyCtn || 0) * Number(form.piecesPerCtn || 0) + Number(form.qtyPieces || 0)
     const payload = {
       companyName: form.companyName,
@@ -339,13 +340,13 @@ export default function Stocks() {
     try {
       await api.put(`/stocks/${modal}`, payload)
       setModal(null); await load()
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
   const del = async (id) => {
     try { await api.delete(`/stocks/${id}`); setDeleteId(null); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error deleting') }
+    catch (e) { toast(e.response?.data?.error || 'Error deleting') }
   }
 
   const filtered = stocks.filter(s => {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import { Btn, Input, NumInput, Select, Modal, Card, Badge, Alert, Empty, ConfirmModal, Table, FormGrid, PageHeader, StatCard, SectionLabel, Icon, Spinner, Combobox } from '../components/ui'
 
@@ -101,10 +102,10 @@ export default function Purchases() {
   }
 
   const save = async () => {
-    if (!form.vendorId) return alert('Select a vendor')
-    if (items.length === 0) return alert('Add at least one item')
+    if (!form.vendorId) return toast('Select a vendor')
+    if (items.length === 0) return toast('Add at least one item')
     const unselected = items.find(i => (!i.stockId || Number(i.stockId) === 0) && (!i.productId || Number(i.productId) === 0))
-    if (unselected) return alert('Please select a product for all items')
+    if (unselected) return toast('Please select a product for all items')
     setSaving(true)
     try {
       const payload = {
@@ -123,7 +124,7 @@ export default function Purchases() {
         await api.post('/purchases', payload)
       }
       await load(); setView('list')
-    } catch (e) { alert(e.response?.data?.error || 'Error saving') }
+    } catch (e) { toast(e.response?.data?.error || 'Error saving') }
     setSaving(false)
   }
 
@@ -144,7 +145,7 @@ export default function Purchases() {
 
   const del = async (id) => {
     try { await api.delete(`/purchases/${id}`); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Cannot delete') }
+    catch (e) { toast(e.response?.data?.error || 'Cannot delete') }
   }
 
   const filtered = purchases.filter(p => {
@@ -297,7 +298,7 @@ export default function Purchases() {
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="number" onWheel={e => e.target.blur()}
                         min="1"
                         className="db-input"
                         value={item.quantity || ''}
@@ -311,7 +312,7 @@ export default function Purchases() {
                     </td>
                     <td>
                       <input
-                        type="number"
+                        type="number" onWheel={e => e.target.blur()}
                         min="0"
                         step="any"
                         className="db-input"

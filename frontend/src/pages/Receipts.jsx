@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { getCompanyInfo } from '../utils/companyInfo'
 import { h } from '../utils/exportUtils'
 import { Btn, Input, Select, Card, Alert, Empty, Table, PageHeader, SectionLabel, Icon, Spinner, Badge } from '../components/ui'
@@ -129,6 +130,10 @@ export default function Receipts() {
     if (!selectedCustomer) { setError('Select a customer first'); return }
     const amt = parseFloat(amount)
     if (!amt || amt <= 0) { setError('Enter a valid amount'); return }
+    if (selectedCustomer.customer_type === 'WHOLESALER' && (selectedBalance === null || selectedBalance <= 0)) {
+      setError('No outstanding balance — this account is already fully paid.'); return
+    }
+    if (method !== 'CASH' && !bankAccountId) { setError('Select a bank account'); return }
     const accId = bankAccountId ? Number(bankAccountId) : null
     setError('')
     setQueue(prev => [...prev, {
@@ -171,7 +176,7 @@ export default function Receipts() {
       await api.delete(`/receipts/${id}`)
       loadHistory()
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to delete')
+      toast(e.response?.data?.error || 'Failed to delete')
     }
   }
 
@@ -275,7 +280,7 @@ export default function Receipts() {
             <label className="form-label">Amount (Rs.)</label>
             <input
               ref={amountRef}
-              type="number"
+              type="number" onWheel={e => e.target.blur()}
               value={amount}
               min="0"
               step="0.01"

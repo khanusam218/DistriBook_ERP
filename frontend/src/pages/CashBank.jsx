@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import {
@@ -29,6 +30,9 @@ export default function CashBank() {
   const [formError, setFormError] = useState('')
 
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => { loadAccounts() }, [])
 
@@ -82,7 +86,24 @@ export default function CashBank() {
       if (selected?.id === id) { setSelected(null); setTransactions([]) }
       loadAccounts()
     } catch (e) {
-      alert(e.response?.data?.error || 'Failed to delete')
+      toast(e.response?.data?.error || 'Failed to delete')
+    }
+  }
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null); setDeletePassword(''); setDeleteError(''); setDeleting(false)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletePassword) { setDeleteError('Password is required'); return }
+    setDeleting(true); setDeleteError('')
+    try {
+      await api.post('/company/verify-delete-password', { password: deletePassword })
+      await deleteAccount(deleteTarget.id)
+      closeDeleteModal()
+    } catch (e) {
+      setDeleteError(e.response?.data?.error || 'Incorrect password')
+      setDeleting(false)
     }
   }
 
@@ -237,7 +258,7 @@ export default function CashBank() {
                   </button>
                   <button
                     style={{ fontSize: 12, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    onClick={e => { e.stopPropagation(); setDeleteTarget(acc) }}
+                    onClick={e => { e.stopPropagation(); setDeleteTarget(acc); setDeletePassword(''); setDeleteError('') }}
                   >
                     Delete
                   </button>
@@ -417,19 +438,34 @@ export default function CashBank() {
       {deleteTarget && (
         <Modal
           open
-          onClose={() => setDeleteTarget(null)}
+          onClose={closeDeleteModal}
           title="Delete Account"
           maxWidth={400}
+          onKeyDown={e => { if (e.key === 'Enter') confirmDelete() }}
           footer={
             <>
-              <Btn variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Btn>
-              <Btn variant="danger" onClick={() => { deleteAccount(deleteTarget.id); setDeleteTarget(null) }}>Delete</Btn>
+              <Btn variant="secondary" onClick={closeDeleteModal}>Cancel</Btn>
+              <Btn variant="danger" onClick={confirmDelete} disabled={deleting}>
+                {deleting ? 'Deleting…' : 'Delete'}
+              </Btn>
             </>
           }
         >
-          <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.6 }}>
-            Delete <strong>{deleteTarget.account_name}</strong>? This cannot be undone.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+              Delete <strong>{deleteTarget.account_name}</strong>? This cannot be undone.
+            </p>
+            <Input
+              label="Enter your password to confirm"
+              type="password"
+              required
+              autoFocus
+              value={deletePassword}
+              onChange={e => { setDeletePassword(e.target.value); setDeleteError('') }}
+              placeholder="Password"
+            />
+            {deleteError && <Alert type="error">{deleteError}</Alert>}
+          </div>
         </Modal>
       )}
     </div>

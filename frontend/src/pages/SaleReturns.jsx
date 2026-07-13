@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { toast } from '../components/Toast'
 import { exportPDF, exportExcel, printTable, ExportBar } from '../utils/exportUtils'
 import { Btn, Input, Select, Card, Empty, ConfirmModal, Table, FormGrid, PageHeader, SectionLabel, Icon, Spinner } from '../components/ui'
 
@@ -41,13 +42,13 @@ export default function SaleReturns() {
 
   const save = async () => {
     const toReturn = items.filter(i => Number(i.quantity) > 0)
-    if (!form.saleId) return alert('Select a sale')
-    if (toReturn.length === 0) return alert('Enter quantity for at least one item')
+    if (!form.saleId) return toast('Select a sale')
+    if (toReturn.length === 0) return toast('Enter quantity for at least one item')
     setSaving(true)
     try {
       await api.post('/sale-returns', { ...form, items: toReturn.map(i => ({ stockId: i.stockId, quantity: Number(i.quantity), price: Number(i.price) })) })
       await load(); setView('list')
-    } catch (e) { alert(e.response?.data?.error || 'Error') }
+    } catch (e) { toast(e.response?.data?.error || 'Error') }
     setSaving(false)
   }
 
@@ -58,7 +59,7 @@ export default function SaleReturns() {
 
   const del = async (id) => {
     try { await api.delete(`/sale-returns/${id}`); await load() }
-    catch (e) { alert(e.response?.data?.error || 'Error') }
+    catch (e) { toast(e.response?.data?.error || 'Error') }
   }
 
   const filtered = returns.filter(r => {
@@ -187,7 +188,7 @@ export default function SaleReturns() {
                     <td style={{ color: '#64748b' }}>{item.maxQty}</td>
                     <td style={{ width: 110 }}>
                       <input
-                        type="number"
+                        type="number" onWheel={e => e.target.blur()}
                         min="0"
                         max={item.maxQty}
                         className="db-input"
