@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "build-frontend": "cd ../frontend && npm install --include=dev && npm run build"
+    "build-frontend": "cd ../frontend && npm install --include=dev && npm run build && rm -rf ../backend/src/public && cp -r ../public ../backend/src/public"
   },
   "engines": {
     "node": ">=18.0.0"
