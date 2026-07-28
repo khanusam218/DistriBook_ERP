@@ -8,6 +8,7 @@ const { wasmBuffer } = require('./wasm-data');
 // Database directory: env var (set by Electron), CWD when packaged, or dev path
 const DEV_DIR = path.join(__dirname, '..', '..', '..');
 const DB_DIR = process.env.DB_DIR || DEV_DIR;
+fs.mkdirSync(DB_DIR, { recursive: true });
 const AUTH_DB_PATH = path.join(DB_DIR, 'thok.db');
 
 let SQL = null;
