@@ -6,6 +6,7 @@ const fs = require('fs')
 const crypto = require('crypto')
 
 // ── Environment ───────────────────────────────────────────────────────────────
+app.setName('DistriBook ERP')
 process.env.PORT = '5002'
 process.env.NODE_ENV = 'production'
 
@@ -80,7 +81,7 @@ function createMainWindow() {
     width: 1366,
     height: 768,
     show: false,
-    title: 'Thok Software ERP',
+    title: 'DistriBook ERP',
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       nodeIntegration: false,

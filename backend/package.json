@@ -1,7 +1,7 @@
 {
-  "name": "distribooks-erp",
+  "name": "distribook-erp-backend",
   "version": "1.0.0",
-  "description": "DistriBooks - Wholesale Business ERP",
+  "description": "DistriBook ERP - Wholesale Business ERP",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

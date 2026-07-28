@@ -10,7 +10,7 @@ const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits:
 
 function printReceipt(r) {
   const c = getCompanyInfo()
-  const name = c.name || 'DistriBooks'
+  const name = c.name || 'DistriBook ERP'
   const addr = [c.address, c.city].filter(Boolean).join(', ')
   const contact = [c.phone && `Ph: ${c.phone}`, c.mobile && `Mob: ${c.mobile}`].filter(Boolean).join('  |  ')
   const w = window.open('', '_blank', 'width=400,height=560')

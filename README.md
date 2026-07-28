@@ -1,4 +1,4 @@
-# Thok Software - ERP System
+# DistriBook ERP
 
 A comprehensive offline web-based ERP system for wholesale business management running on localhost.
 
@@ -188,7 +188,7 @@ Key tables:
 ## Project Structure
 
 ```
-Thok Software/
+DistriBook ERP/
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/        # API controllers

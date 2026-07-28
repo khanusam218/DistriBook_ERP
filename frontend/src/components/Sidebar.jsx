@@ -129,10 +129,12 @@ function Sidebar({ setIsAuthenticated }) {
   const navRef = useRef(null)
 
   const canSee = (item) => {
-    if (item.section || item.key === 'dashboard' || item.key === 'company_settings' || item.key === 'backup') return true;
+    if (item.section) return true;
+    // Settings pages are admin-only, never granted via per-module permissions
+    if (item.key === 'company_settings' || item.key === 'user_management' || item.key === 'backup') return isAdmin;
     if (isAdmin) return true;
-    // Missing key = allowed; only explicitly false = denied
-    return perms[item.key] !== false;
+    // Only explicitly granted (true) modules are visible to non-admins
+    return perms[item.key] === true;
   }
 
   const visibleItems = NAV.reduce((acc, item, idx) => {
@@ -176,9 +178,9 @@ function Sidebar({ setIsAuthenticated }) {
                 <path d="M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z"/>
               </svg>
             </div>
-            DistriBooks
+            DistriBook ERP
           </div>
-          <div style={{ fontSize: 11, color: '#475569', marginTop: 2, marginLeft: 36 }}>ERP System</div>
+          <div style={{ fontSize: 11, color: '#475569', marginTop: 2, marginLeft: 36 }}>Business Management</div>
         </div>
         <button
           onClick={() => window.location.reload()}

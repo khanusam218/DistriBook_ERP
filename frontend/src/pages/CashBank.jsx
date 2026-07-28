@@ -111,7 +111,7 @@ export default function CashBank() {
   const bankTotal = accounts.filter(a => a.account_type === 'BANK').reduce((s, a) => s + (a.balance || 0), 0)
 
   const handlePrintLedger = (acc, txns) => {
-    const co = (() => { try { return JSON.parse(localStorage.getItem('companyInfo') || '{}').name || 'DistriBooks' } catch { return 'DistriBooks' } })()
+    const co = (() => { try { return JSON.parse(localStorage.getItem('companyInfo') || '{}').name || 'DistriBook ERP' } catch { return 'DistriBook ERP' } })()
     const rows = txns.map((t, i) => `<tr>
       <td>${i + 1}</td><td>${t.transaction_date}</td><td>${t.transaction_type}</td>
       <td>${t.description || '—'}</td>
@@ -147,7 +147,7 @@ export default function CashBank() {
   }
 
   const handlePDFLedger = (acc, txns) => {
-    const co = (() => { try { return JSON.parse(localStorage.getItem('companyInfo') || '{}').name || 'DistriBooks' } catch { return 'DistriBooks' } })()
+    const co = (() => { try { return JSON.parse(localStorage.getItem('companyInfo') || '{}').name || 'DistriBook ERP' } catch { return 'DistriBook ERP' } })()
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     doc.setFontSize(16); doc.setFont(undefined, 'bold'); doc.text(co, 14, 16)
     doc.setFontSize(13); doc.text(acc.account_name, 14, 24)

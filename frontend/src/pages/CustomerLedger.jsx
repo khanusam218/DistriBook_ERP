@@ -168,7 +168,7 @@ export default function CustomerLedger() {
     td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:10pt}
     tfoot td{background:#f1f5f9;font-weight:700;border-top:2px solid #334155}
     @media print{body{margin:10px}}</style></head><body>
-    <h2 style="margin:0 0 4px">${c.name||'DistriBooks'}</h2>
+    <h2 style="margin:0 0 4px">${c.name||'DistriBook ERP'}</h2>
     <div style="font-size:13pt;font-weight:700;margin:6px 0 2px">Customer Ledger — ${selectedCustomer?.customer_name||''}</div>
     <div style="font-size:10pt;color:#555;margin-bottom:14px">${selectedCustomer?.shop_name||''} | Code: ${selectedCustomer?.customer_code||''}</div>
     <table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Description</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr></thead>
@@ -186,7 +186,7 @@ export default function CustomerLedger() {
   const handlePDF = () => {
     const c = co()
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text(c.name||'DistriBooks', 14, 16)
+    doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text(c.name||'DistriBook ERP', 14, 16)
     doc.setFontSize(12); doc.text(`Customer Ledger — ${selectedCustomer?.customer_name||''}`, 14, 24)
     doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(100)
     doc.text(`${selectedCustomer?.shop_name||''} | Code: ${selectedCustomer?.customer_code||''}`, 14, 30)
@@ -220,7 +220,7 @@ export default function CustomerLedger() {
   const handleVaPDF = () => {
     const c = co()
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text(c.name||'DistriBooks', 14, 16)
+    doc.setFontSize(16); doc.setFont(undefined,'bold'); doc.text(c.name||'DistriBook ERP', 14, 16)
     doc.setFontSize(12); doc.text('All Customer Balances', 14, 24)
     doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(100)
     doc.text(`Total Receivable: Rs. ${fmt(totalReceivable)}   |   Generated: ${today()}`, 14, 30)
@@ -270,7 +270,7 @@ export default function CustomerLedger() {
     td{padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:10pt}
     tfoot td{background:#f1f5f9;font-weight:700;border-top:2px solid #334155}
     @media print{body{margin:10px}}</style></head><body>
-    <h2 style="margin:0 0 4px">${c.name||'DistriBooks'}</h2>
+    <h2 style="margin:0 0 4px">${c.name||'DistriBook ERP'}</h2>
     <div style="font-size:13pt;font-weight:700;margin:6px 0 2px">All Customer Balances</div>
     <div style="font-size:10pt;color:#555;margin-bottom:14px">Total Receivable: Rs. ${fmt(totalReceivable)} | ${today()}</div>
     <table><thead><tr><th>#</th><th>Customer</th><th>Shop</th><th>Code</th><th style="text-align:right">Balance</th><th style="text-align:right">Days</th><th style="text-align:center">Status</th></tr></thead>

@@ -1,7 +1,7 @@
 @echo off
-title Thok Software - Update
+title DistriBook ERP - Update
 echo ========================================
-echo   Thok Software ERP - Updater
+echo   DistriBook ERP - Updater
 echo ========================================
 echo.
 

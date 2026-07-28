@@ -15,7 +15,7 @@ const rl = readline.createInterface({ input: process.stdin, output: process.stdo
 const ask = (q) => new Promise(res => rl.question(q, res))
 
 async function main() {
-  console.log('\n=== Thok Software — First-Time Setup ===\n')
+  console.log('\n=== DistriBook ERP — First-Time Setup ===\n')
 
   const username  = await ask('Enter admin username  [admin]: ') || 'admin'
   const password  = await ask('Enter admin password  [admin123]: ') || 'admin123'

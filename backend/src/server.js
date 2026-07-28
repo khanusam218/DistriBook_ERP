@@ -33,10 +33,12 @@ async function dbMiddleware(req, res, next) {
   }
 }
 
+const PRODUCTION_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no Origin (same-origin / Electron / curl) and localhost only
-    if (!origin || /^https?:\/\/localhost(:\d+)?$/.test(origin)) return cb(null, true);
+    // Allow requests with no Origin (same-origin / Electron / curl), localhost, and configured production origins
+    if (!origin || /^https?:\/\/localhost(:\d+)?$/.test(origin) || PRODUCTION_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error('CORS: origin not allowed'));
   },
   credentials: true,

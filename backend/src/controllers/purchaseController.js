@@ -48,8 +48,8 @@ exports.create = (req, res) => {
     for (const item of items) {
       const qty = Number(item.quantity);
       const price = Number(item.purchasePrice);
-      if (!Number.isInteger(qty) || qty <= 0)
-        return res.status(400).json({ error: 'Item quantity must be a positive integer' });
+      if (!isFinite(qty) || qty <= 0)
+        return res.status(400).json({ error: 'Item quantity must be a positive number' });
       if (!isFinite(price) || price < 0)
         return res.status(400).json({ error: 'Item purchase price must be a non-negative number' });
     }
@@ -107,7 +107,7 @@ exports.create = (req, res) => {
            VALUES (?, ?, ?, ?, ?)`
         ).run(purchaseId, stockId, item.quantity, item.purchasePrice, itemTotal);
         db.prepare('UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(item.quantity, stockId);
+          .run(item.quantity * piecesPerCtn, stockId);
       }
 
       db.prepare('UPDATE purchases SET total_amount = ? WHERE id = ?').run(Math.round(totalAmount * 100) / 100, purchaseId);
@@ -144,8 +144,8 @@ exports.update = (req, res) => {
     for (const item of items) {
       const qty = Number(item.quantity);
       const price = Number(item.purchasePrice);
-      if (!Number.isInteger(qty) || qty <= 0)
-        return res.status(400).json({ error: 'Item quantity must be a positive integer' });
+      if (!isFinite(qty) || qty <= 0)
+        return res.status(400).json({ error: 'Item quantity must be a positive number' });
       if (!isFinite(price) || price < 0)
         return res.status(400).json({ error: 'Item purchase price must be a non-negative number' });
     }
@@ -156,8 +156,10 @@ exports.update = (req, res) => {
       // Reverse stock for old items
       const oldItems = db.prepare('SELECT stock_id, quantity FROM purchase_items WHERE purchase_id = ?').all(id);
       for (const old of oldItems) {
+        const oldStockInfo = db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(old.stock_id);
+        const oldPiecesPerCtn = oldStockInfo?.pieces_per_ctn || 1;
         db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(old.quantity, old.stock_id);
+          .run(old.quantity * oldPiecesPerCtn, old.stock_id);
       }
       db.prepare('DELETE FROM purchase_items WHERE purchase_id = ?').run(id);
       db.prepare("DELETE FROM vendor_ledger WHERE reference_id = ? AND reference_type = 'purchase'").run(id);
@@ -195,7 +197,7 @@ exports.update = (req, res) => {
         db.prepare(`INSERT INTO purchase_items (purchase_id, stock_id, quantity, purchase_price, total) VALUES (?, ?, ?, ?, ?)`)
           .run(id, stockId, item.quantity, item.purchasePrice, itemTotal);
         db.prepare('UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(item.quantity, stockId);
+          .run(item.quantity * piecesPerCtn, stockId);
       }
 
       db.prepare('UPDATE purchases SET total_amount = ? WHERE id = ?').run(Math.round(totalAmount * 100) / 100, id);
@@ -220,8 +222,10 @@ exports.delete = (req, res) => {
       const { id } = req.params;
       const items = db.prepare('SELECT stock_id, quantity FROM purchase_items WHERE purchase_id = ?').all(id);
       for (const item of items) {
+        const stockInfo = db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stock_id);
+        const piecesPerCtn = stockInfo?.pieces_per_ctn || 1;
         db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(item.quantity, item.stock_id);
+          .run(item.quantity * piecesPerCtn, item.stock_id);
       }
       db.prepare('DELETE FROM purchase_items WHERE purchase_id = ?').run(id);
       db.prepare("DELETE FROM vendor_ledger WHERE reference_id = ? AND reference_type = 'purchase'").run(id);

@@ -15,7 +15,7 @@ export function h(str) {
 
 function companyName() {
   const c = getCompanyInfo()
-  return c.name || 'DistriBooks'
+  return c.name || 'DistriBook ERP'
 }
 
 function companyHeader() {
@@ -119,7 +119,7 @@ export function exportExcel(title, columns, rows, filename) {
 // ── Print ──────────────────────────────────────────────────────────────────────
 export function printTable(title, columns, rows, meta) {
   const c = getCompanyInfo()
-  const name = c.name || 'DistriBooks'
+  const name = c.name || 'DistriBook ERP'
   const addressLine = [c.address, c.city].filter(Boolean).join(', ')
   const contactLine = [c.phone && `Ph: ${c.phone}`, c.mobile && `Mob: ${c.mobile}`, c.email].filter(Boolean).join('  |  ')
   const taxLine = [c.ntn && `NTN: ${c.ntn}`, c.strn && `STRN: ${c.strn}`].filter(Boolean).join('  |  ')

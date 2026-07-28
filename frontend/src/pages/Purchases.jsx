@@ -299,7 +299,7 @@ export default function Purchases() {
                     <td>
                       <input
                         type="number" onWheel={e => e.target.blur()}
-                        min="1"
+                        min="0.01" step="any"
                         className="db-input"
                         value={item.quantity || ''}
                         onChange={e => updateItem(idx, 'quantity', e.target.value)}

@@ -23,8 +23,14 @@ const COLS = [
   { header: 'Pcs/Unit', accessor: r => r.pieces_per_ctn },
   { header: 'Purchase Price', accessor: r => `Rs. ${Number(r.purchase_price).toFixed(2)}` },
   { header: 'Sale Price', accessor: r => `Rs. ${Number(r.sale_price).toFixed(2)}` },
-  { header: 'Qty', accessor: r => r.quantity },
+  { header: 'Qty/CTN', accessor: r => fmtCtn(r.quantity, r.pieces_per_ctn) },
 ]
+
+function fmtCtn(quantity, piecesPerCtn) {
+  const ppc = Number(piecesPerCtn) || 1
+  const ctn = Number(quantity || 0) / ppc
+  return Number.isInteger(ctn) ? String(ctn) : ctn.toFixed(2)
+}
 
 function AddModal({ vendors, allProducts, onSave, onClose, saving }) {
   const [vendorId, setVendorId] = useState('')
@@ -414,7 +420,7 @@ export default function Stocks() {
               <th>Pcs/Unit</th>
               <th>Purchase Price</th>
               <th>Sale Price</th>
-              <th>Qty</th>
+              <th>Qty/CTN</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -435,7 +441,7 @@ export default function Stocks() {
                 <td>Rs. {Number(s.sale_price).toFixed(2)}</td>
                 <td>
                   <Badge color={s.quantity <= 0 ? 'red' : s.quantity <= 10 ? 'amber' : 'green'}>
-                    {s.quantity}
+                    {fmtCtn(s.quantity, s.pieces_per_ctn)}
                   </Badge>
                 </td>
                 <td>

@@ -1,7 +1,7 @@
 @echo off
-title Thok Software - Build Installer
+title DistriBook ERP - Build Installer
 echo ============================================
-echo   Thok Software ERP - Installer Builder
+echo   DistriBook ERP - Installer Builder
 echo ============================================
 echo.
 

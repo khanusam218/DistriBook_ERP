@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 
-function Login({ setIsAuthenticated }) {
+function Login({ setIsAuthenticated, setCurrentUser }) {
   const [mode, setMode] = useState('login')
   const navigate = useNavigate()
 
@@ -28,6 +28,7 @@ function Login({ setIsAuthenticated }) {
       const res = await api.post('/auth/login', { username: loginUsername.trim(), password: loginPassword })
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
+      setCurrentUser(res.data.user)
       setIsAuthenticated(true)
       navigate('/dashboard')
     } catch (err) {
@@ -54,6 +55,7 @@ function Login({ setIsAuthenticated }) {
       })
       localStorage.setItem('token', res.data.token)
       localStorage.setItem('user', JSON.stringify(res.data.user))
+      setCurrentUser(res.data.user)
       setIsAuthenticated(true)
       navigate('/dashboard')
     } catch (err) {
@@ -94,8 +96,8 @@ function Login({ setIsAuthenticated }) {
               </svg>
             </div>
             <div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>DistriBooks</div>
-              <div style={{ fontSize: 12, color: '#818cf8', fontWeight: 500 }}>Business ERP System</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>DistriBook ERP</div>
+              <div style={{ fontSize: 12, color: '#818cf8', fontWeight: 500 }}>Business Management System</div>
             </div>
           </div>
 
@@ -172,7 +174,7 @@ function Login({ setIsAuthenticated }) {
                 <form onSubmit={handleLogin}>
                   <div style={{ marginBottom: 24 }}>
                     <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Welcome back</h2>
-                    <p style={{ fontSize: 13, color: '#64748b' }}>Sign in to your DistriBooks account</p>
+                    <p style={{ fontSize: 13, color: '#64748b' }}>Sign in to your DistriBook ERP account</p>
                   </div>
 
                   {loginError && (
@@ -254,7 +256,7 @@ function Login({ setIsAuthenticated }) {
                 <form onSubmit={handleSignup}>
                   <div style={{ marginBottom: 20 }}>
                     <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Create your account</h2>
-                    <p style={{ fontSize: 13, color: '#64748b' }}>Set up DistriBooks for your business</p>
+                    <p style={{ fontSize: 13, color: '#64748b' }}>Set up DistriBook ERP for your business</p>
                   </div>
 
                   {signupError && (
@@ -319,7 +321,7 @@ function Login({ setIsAuthenticated }) {
           </div>
 
           <p style={{ textAlign: 'center', fontSize: 12, color: 'rgba(148,163,184,0.6)', marginTop: 20 }}>
-            DistriBooks © {new Date().getFullYear()} — Offline ERP System
+            DistriBook ERP © {new Date().getFullYear()} — Offline ERP System
           </p>
         </div>
       </div>

@@ -531,7 +531,7 @@ const db = {
       const hash = bcrypt.hashSync('admin123', 10);
       authWrapper.sqliteDb.run(
         'INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)',
-        ['hafizluqman', 'hafizluqman@distribooks.local', hash, 'Hafiz Luqman', 'admin']
+        ['hafizluqman', 'hafizluqman@distribookerp.local', hash, 'Hafiz Luqman', 'admin']
       );
       authWrapper._saveSync();
       console.log('Default admin user created (hafizluqman / admin123)');

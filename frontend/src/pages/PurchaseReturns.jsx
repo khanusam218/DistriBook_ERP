@@ -203,7 +203,7 @@ export default function PurchaseReturns() {
                     <td style={{ width: 110 }}>
                       <input
                         type="number" onWheel={e => e.target.blur()}
-                        min="0"
+                        min="0" step="any"
                         max={item.maxQty}
                         className="db-input"
                         value={item.quantity || ''}

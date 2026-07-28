@@ -36,13 +36,27 @@ function AnimatedRoutes({ children }) {
   )
 }
 
+function AccessDenied() {
+  return (
+    <div style={{ padding: 48, textAlign: 'center', color: '#64748b' }}>
+      <h2 style={{ color: '#0f172a', marginBottom: 8 }}>Access Denied</h2>
+      <p>You don't have permission to view this page. Contact your administrator.</p>
+    </div>
+  )
+}
+
 function Guard({ permKey, element, currentUser }) {
   const isAdmin = currentUser?.role === 'admin'
   const perms = currentUser?.permissions || {}
-  // Missing key = allowed; only explicitly false = denied
-  const allowed = isAdmin || perms[permKey] !== false
+  // Only explicitly granted (true) modules are allowed for non-admins
+  const allowed = isAdmin || perms[permKey] === true
   if (allowed) return element
-  return <Navigate to="/dashboard" replace />
+  return <AccessDenied />
+}
+
+function AdminOnly({ element, currentUser }) {
+  if (currentUser?.role === 'admin') return element
+  return <AccessDenied />
 }
 
 function AuthenticatedLayout({ currentUser, setIsAuthenticated }) {
@@ -52,7 +66,7 @@ function AuthenticatedLayout({ currentUser, setIsAuthenticated }) {
       <div style={{ flex: 1, marginLeft: 240, minHeight: '100vh', minWidth: 0 }}>
         <AnimatedRoutes>
           <Routes>
-            <Route path="/dashboard"          element={<Dashboard />} />
+            <Route path="/dashboard"          element={<Guard permKey="dashboard"        element={<Dashboard />}        currentUser={currentUser} />} />
             <Route path="/stocks"             element={<Guard permKey="stocks"           element={<Stocks />}           currentUser={currentUser} />} />
             <Route path="/customers"          element={<Guard permKey="customers"        element={<Customers />}        currentUser={currentUser} />} />
             <Route path="/vendors"            element={<Guard permKey="vendors"          element={<Vendors />}          currentUser={currentUser} />} />
@@ -71,9 +85,9 @@ function AuthenticatedLayout({ currentUser, setIsAuthenticated }) {
             <Route path="/cash-bank"          element={<Guard permKey="cash_bank"        element={<CashBank />}         currentUser={currentUser} />} />
             <Route path="/employees"          element={<Guard permKey="employees"        element={<Employees />}        currentUser={currentUser} />} />
             <Route path="/trial-balance"      element={<Guard permKey="trial_balance"    element={<TrialBalance />}     currentUser={currentUser} />} />
-            <Route path="/user-management"    element={<Guard permKey="user_management"  element={<UserManagement />}   currentUser={currentUser} />} />
-            <Route path="/company-settings"   element={<CompanySettings />} />
-            <Route path="/backup"             element={<Backup />} />
+            <Route path="/user-management"    element={<AdminOnly element={<UserManagement />}   currentUser={currentUser} />} />
+            <Route path="/company-settings"   element={<AdminOnly element={<CompanySettings />}   currentUser={currentUser} />} />
+            <Route path="/backup"             element={<AdminOnly element={<Backup />}            currentUser={currentUser} />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </AnimatedRoutes>
@@ -120,7 +134,7 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} /> : <Navigate to="/dashboard" />}
+          element={!isAuthenticated ? <Login setIsAuthenticated={setIsAuthenticated} setCurrentUser={setCurrentUser} /> : <Navigate to="/dashboard" />}
         />
         <Route
           path="/*"

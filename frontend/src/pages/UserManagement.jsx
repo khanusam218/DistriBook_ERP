@@ -22,6 +22,7 @@ const ALL_PERMISSIONS = [
   { key: 'customer_ledger',  label: 'Customer Ledger',    icon: '📋' },
   { key: 'receipts',         label: 'Receipts',           icon: '🧾' },
   { key: 'vendor_payments',  label: 'Vendor Payments',    icon: '💸' },
+  { key: 'expenses',         label: 'Expenses',           icon: '💰' },
   { key: 'cash_bank',        label: 'Cash & Bank',        icon: '🏦' },
   { key: 'employees',        label: 'Employees',          icon: '👤' },
   { key: 'trial_balance',    label: 'Trial Balance',      icon: '⚖️' },
@@ -118,7 +119,7 @@ function UserModal({ user, onClose, onSaved }) {
       const payload = {
         username: form.username.trim(),
         fullName: form.fullName.trim(),
-        email: form.email.trim() || `${form.username.trim()}@distribooks.local`,
+        email: form.email.trim() || `${form.username.trim()}@distribookerp.local`,
         role: form.role,
         isActive: form.isActive,
         permissions: form.role === 'admin' ? {} : form.permissions,

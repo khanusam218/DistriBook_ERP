@@ -258,7 +258,7 @@ function ProductCard({ product, cartQtyMap, onAdd }) {
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 8, gap: 4 }}>
         <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: 14 }}>Rs.{product.sale_price}</span>
         <span style={{ fontSize: 10.5, padding: '1px 6px', borderRadius: 99, fontWeight: 600, flexShrink: 0, background: stockBg, color: stockColor }}>
-          {product.quantity} {product.packing_unit}
+          {product.quantity} PCS
         </span>
       </div>
       {inCart && (
@@ -531,7 +531,7 @@ export default function POS() {
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #1e1b4b, #312e81)', color: '#fff', padding: '10px 20px', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative', zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>{getCompanyInfo().name || 'DistriBooks'}</div>
+            <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>{getCompanyInfo().name || 'DistriBook ERP'}</div>
             <div style={{ fontSize: 11, color: '#a5b4fc' }}>Point of Sale</div>
           </div>
         </div>

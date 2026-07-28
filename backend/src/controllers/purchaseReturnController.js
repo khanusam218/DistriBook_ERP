@@ -65,8 +65,10 @@ exports.create = (req, res) => {
         db.prepare(
           `INSERT INTO purchase_return_items (purchase_return_id, stock_id, quantity, price, total) VALUES (?, ?, ?, ?, ?)`
         ).run(returnId, item.stockId, item.quantity, item.price, itemTotal);
+        const stockInfo = db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stockId);
+        const piecesPerCtn = stockInfo?.pieces_per_ctn || 1;
         db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(item.quantity, item.stockId);
+          .run(item.quantity * piecesPerCtn, item.stockId);
       }
       db.prepare('UPDATE purchase_returns SET total_amount = ? WHERE id = ?').run(totalAmount, returnId);
 
@@ -94,8 +96,10 @@ exports.delete = (req, res) => {
       const { id } = req.params;
       const items = db.prepare('SELECT stock_id, quantity FROM purchase_return_items WHERE purchase_return_id = ?').all(id);
       for (const item of items) {
+        const stockInfo = db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stock_id);
+        const piecesPerCtn = stockInfo?.pieces_per_ctn || 1;
         db.prepare('UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(item.quantity, item.stock_id);
+          .run(item.quantity * piecesPerCtn, item.stock_id);
       }
       db.prepare('DELETE FROM purchase_return_items WHERE purchase_return_id = ?').run(id);
       const row = db.prepare('SELECT * FROM purchase_returns WHERE id = ?').get(id);

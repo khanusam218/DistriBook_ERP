@@ -12,7 +12,7 @@ exports.register = async (req, res) => {
     const { username, password, fullName, businessName } = req.body;
     if (!username || !password)
       return res.status(400).json({ error: 'Username and password are required' });
-    const email = `${username}@distribooks.local`;
+    const email = `${username}@distribookerp.local`;
     const user = await registerUser(username, email, password, fullName || '', 'admin', businessName || '');
     // Set business_owner_id = own id so this user gets their own isolated database
     db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(user.id, user.id);
@@ -140,13 +140,12 @@ exports.createUser = async (req, res) => {
     // Resolve admin's business_owner_id so sub-user inherits the same business db
     const adminRow = db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(req.user.userId);
 
-    const user = await registerUser(username, email || `${username}@distribooks.local`, password, fullName, role || 'user');
+    const user = await registerUser(username, email || `${username}@distribookerp.local`, password, fullName, role || 'user');
 
-    // If admin has their own business (non-null), sub-user inherits it (same company).
-    // If admin is legacy (null), sub-user gets their OWN isolated database.
-    const inheritedOwnerId = (adminRow?.business_owner_id != null)
-      ? adminRow.business_owner_id
-      : user.id;
+    // Sub-user always shares the exact same business context as the creating admin:
+    // legacy admins (business_owner_id null) use the shared auth db as their business db,
+    // so sub-users must stay null too to land in that same db, not a new isolated one.
+    const inheritedOwnerId = adminRow?.business_owner_id ?? null;
 
     // Sub-user inherits admin's business, or gets their own isolated DB
     db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(inheritedOwnerId, user.id);

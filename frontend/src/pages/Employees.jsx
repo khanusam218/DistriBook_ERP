@@ -419,7 +419,7 @@ function LedgerView({ employeeId, onBack }) {
       .slabel{font-size:9pt;color:#64748b;font-weight:600} .sval{font-size:14pt;font-weight:800;margin-top:2px}
       @media print{body{margin:10px}}
     </style></head><body>
-    <h2>${companyInfo.name || 'DistriBooks'}</h2>
+    <h2>${companyInfo.name || 'DistriBook ERP'}</h2>
     <div class="sub">Employee Ledger${fFrom || fTo ? ' | ' + (fFrom||'') + (fTo ? ' to '+fTo : '') : ''}</div>
     <div style="font-size:13pt;font-weight:700;margin-bottom:4px">${employee.name}</div>
     <div style="font-size:10pt;color:#555;margin-bottom:16px">${employee.role||''} ${employee.mobile ? '| '+employee.mobile : ''} | Base: Rs.${employee.base_salary?.toLocaleString()||0}/mo</div>
@@ -444,7 +444,7 @@ function LedgerView({ employeeId, onBack }) {
 
   const handlePDF = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const co = companyInfo.name || 'DistriBooks'
+    const co = companyInfo.name || 'DistriBook ERP'
     doc.setFontSize(16); doc.setFont(undefined, 'bold')
     doc.text(co, 14, 16)
     doc.setFontSize(11); doc.setFont(undefined, 'normal')
