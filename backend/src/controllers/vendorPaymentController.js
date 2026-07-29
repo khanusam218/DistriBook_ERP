@@ -1,6 +1,6 @@
 const db = require('../db/db');
 const ledgerService = require('../services/ledgerService');
-const { createCashBankEntry } = require('./bankAccountController');
+const { createCashBankEntry, resolveCashAccountId } = require('./bankAccountController');
 
 async function getNextPaymentNo() {
   const year = new Date().getFullYear();
@@ -27,20 +27,21 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { vendor_id, amount, payment_method, bank_account_id, notes, payment_date } = req.body;
+    const { vendor_id, amount, payment_method, notes, payment_date } = req.body;
     if (!vendor_id || !amount || amount <= 0) return res.status(400).json({ error: 'Vendor and valid amount required' });
-    if (payment_method && payment_method !== 'CASH' && !bank_account_id) return res.status(400).json({ error: 'Select a bank account' });
+    if (payment_method && payment_method !== 'CASH' && !req.body.bank_account_id) return res.status(400).json({ error: 'Select a bank account' });
 
     const vendor = await db.prepare('SELECT * FROM vendors WHERE id = ?').get(vendor_id);
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
 
+    const bank_account_id = await resolveCashAccountId(payment_method, req.body.bank_account_id);
     const payment_no = await getNextPaymentNo();
     const date = payment_date || new Date().toISOString().split('T')[0];
 
     const result = await db.prepare(`
       INSERT INTO vendor_payments (payment_no, payment_date, vendor_id, amount, payment_method, bank_account_id, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(payment_no, date, vendor_id, amount, payment_method || 'CASH', bank_account_id || null, notes || '');
+    `).run(payment_no, date, vendor_id, amount, payment_method || 'CASH', bank_account_id, notes || '');
 
     const paymentId = result.lastInsertRowid;
 

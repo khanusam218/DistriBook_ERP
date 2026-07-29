@@ -1,6 +1,6 @@
 const db = require('../db/db');
 const ledgerService = require('../services/ledgerService');
-const { createCashBankEntry } = require('./bankAccountController');
+const { createCashBankEntry, resolveCashAccountId } = require('./bankAccountController');
 
 async function getNextReceiptNo() {
   const year = new Date().getFullYear();
@@ -23,20 +23,21 @@ async function getCustomerOutstanding(customer) {
 }
 
 async function postReceipt(r) {
-  const { customer_id, amount, payment_method, bank_account_id, notes, receipt_date } = r;
+  const { customer_id, amount, payment_method, notes, receipt_date } = r;
   if (!customer_id || !amount || amount <= 0) return null;
-  if (payment_method && payment_method !== 'CASH' && !bank_account_id) return null;
+  if (payment_method && payment_method !== 'CASH' && !r.bank_account_id) return null;
   const customer = await db.prepare('SELECT * FROM customers WHERE id = ?').get(customer_id);
   if (!customer) return null;
   if (customer.customer_type === 'WHOLESALER' && (await getCustomerOutstanding(customer)) <= 0) return null;
 
+  const bank_account_id = await resolveCashAccountId(payment_method, r.bank_account_id);
   const receipt_no = await getNextReceiptNo();
   const date = receipt_date || new Date().toISOString().split('T')[0];
 
   const result = await db.prepare(`
     INSERT INTO receipts (receipt_no, receipt_date, customer_id, amount, payment_method, bank_account_id, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(receipt_no, date, customer_id, amount, payment_method || 'CASH', bank_account_id || null, notes || '');
+  `).run(receipt_no, date, customer_id, amount, payment_method || 'CASH', bank_account_id, notes || '');
 
   const receiptId = result.lastInsertRowid;
 

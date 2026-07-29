@@ -1,5 +1,5 @@
 const db = require('../db/db');
-const { createCashBankEntry } = require('./bankAccountController');
+const { createCashBankEntry, resolveCashAccountId } = require('./bankAccountController');
 
 const CATEGORIES = [
   'Rent', 'Salaries', 'Utilities', 'Transport', 'Fuel',
@@ -32,17 +32,18 @@ exports.getAll = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { expense_date, category, description, amount, payment_method, bank_account_id, notes } = req.body;
+    const { expense_date, category, description, amount, payment_method, notes } = req.body;
     if (!category || !amount || Number(amount) <= 0) {
       return res.status(400).json({ error: 'Category and amount are required' });
     }
+    const bank_account_id = await resolveCashAccountId(payment_method, req.body.bank_account_id);
     const expense_no = await getNextExpenseNo();
     const date = expense_date || new Date().toISOString().split('T')[0];
 
     const result = await db.prepare(
       `INSERT INTO expenses (expense_no, expense_date, category, description, amount, payment_method, bank_account_id, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(expense_no, date, category, description || '', Number(amount), payment_method || 'CASH', bank_account_id || null, notes || '');
+    ).run(expense_no, date, category, description || '', Number(amount), payment_method || 'CASH', bank_account_id, notes || '');
 
     if (bank_account_id) {
       await createCashBankEntry(
@@ -73,7 +74,9 @@ exports.update = async (req, res) => {
     const newCat = category ?? existing.category;
     const newAmt = amount != null ? Number(amount) : existing.amount;
     const newMethod = payment_method ?? existing.payment_method;
-    const newBankId = bank_account_id !== undefined ? (bank_account_id || null) : existing.bank_account_id;
+    const newBankId = bank_account_id !== undefined
+      ? await resolveCashAccountId(newMethod, bank_account_id)
+      : existing.bank_account_id;
     const newDesc = description ?? existing.description;
     const newNotes = notes ?? existing.notes;
 

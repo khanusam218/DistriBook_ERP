@@ -14,6 +14,20 @@ exports.createCashBankEntry = async function (accountId, transactionType, refere
   `).run(accountId, transactionType, referenceId, referenceType, debit, credit, balance, description, date || new Date().toISOString().split('T')[0]);
 };
 
+// Resolves which account a payment should actually post to. If the caller
+// explicitly chose one, use that. Otherwise, for CASH payments, fall back to
+// the tenant's own CASH-type account (every tenant gets exactly one, seeded
+// automatically) — several "Method: Cash" pickers in the UI don't also force
+// picking a specific account, and silently skipping the cash-bank entry in
+// that case was a real bug: the payment was recorded on the receipt/ledger
+// but never reflected in the Cash in Hand balance.
+exports.resolveCashAccountId = async function (paymentMethod, bankAccountId) {
+  if (bankAccountId) return Number(bankAccountId);
+  if (paymentMethod && paymentMethod !== 'CASH') return null;
+  const cashAcc = await db.prepare("SELECT id FROM bank_accounts WHERE account_type = 'CASH' ORDER BY id LIMIT 1").get();
+  return cashAcc ? cashAcc.id : null;
+};
+
 exports.getAll = async (req, res) => {
   try {
     const accounts = await db.prepare('SELECT * FROM bank_accounts ORDER BY account_type, account_name').all();

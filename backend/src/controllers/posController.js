@@ -1,5 +1,6 @@
 const db = require('../db/db');
 const { createCustomerLedgerEntry } = require('../services/ledgerService');
+const { resolveCashAccountId } = require('./bankAccountController');
 
 async function nextBillNo() {
   const last = await db.prepare(
@@ -117,6 +118,7 @@ exports.createSale = async (req, res) => {
       const change = Math.max(0, Math.round((paid - totalAmount) * 100) / 100);
 
       const billNo = await nextBillNo();
+      const resolvedBankAccountId = await resolveCashAccountId(paymentMethod, bankAccountId);
 
       // Insert sale
       const saleRes = await db.prepare(
@@ -131,7 +133,7 @@ exports.createSale = async (req, res) => {
         totalAmount,
         customerName || '',
         paymentMethod || 'CASH',
-        bankAccountId || null,
+        resolvedBankAccountId,
         paid,
         change,
         disc
@@ -164,9 +166,9 @@ exports.createSale = async (req, res) => {
       }
 
       // Cash & Bank impact
-      if (bankAccountId) {
+      if (resolvedBankAccountId) {
         const custLabel = customerName || (customerId ? (await db.prepare('SELECT shop_name FROM customers WHERE id = ?').get(customerId))?.shop_name : '') || 'Walk-in';
-        await postCashBank(bankAccountId, 'POS_SALE', saleId, totalAmount, `POS Sale ${billNo} — ${custLabel}`, saleDate);
+        await postCashBank(resolvedBankAccountId, 'POS_SALE', saleId, totalAmount, `POS Sale ${billNo} — ${custLabel}`, saleDate);
       }
 
       return saleId;
