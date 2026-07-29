@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate-to-mysql": "node migrate-to-mysql.js",
-    "build-frontend": "cd ../frontend && npm install --include=dev && npm run build && rm -rf ../backend/src/public && cp -r ../public ../backend/src/public"
+    "build-frontend": "echo Frontend is pre-built and committed in src/public — nothing to build."
   },
   "engines": {
     "node": ">=18.0.0"
