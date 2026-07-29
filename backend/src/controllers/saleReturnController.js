@@ -1,9 +1,9 @@
 const db = require('../db/db');
 const { createCustomerLedgerEntry, getCustomerBalance } = require('../services/ledgerService');
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    res.json(db.prepare(
+    res.json(await db.prepare(
       `SELECT sr.*, s.bill_no FROM sale_returns sr
        LEFT JOIN sales s ON sr.sale_id = s.id ORDER BY sr.return_date DESC`
     ).all());
@@ -12,11 +12,11 @@ exports.getAll = (req, res) => {
   }
 };
 
-exports.getById = (req, res) => {
+exports.getById = async (req, res) => {
   try {
-    const record = db.prepare('SELECT * FROM sale_returns WHERE id = ?').get(req.params.id);
+    const record = await db.prepare('SELECT * FROM sale_returns WHERE id = ?').get(req.params.id);
     if (!record) return res.status(404).json({ error: 'Sale return not found' });
-    const items = db.prepare(
+    const items = await db.prepare(
       `SELECT sri.*, s.product_name FROM sale_return_items sri
        LEFT JOIN stocks s ON sri.stock_id = s.id WHERE sri.sale_return_id = ?`
     ).all(req.params.id);
@@ -26,7 +26,7 @@ exports.getById = (req, res) => {
   }
 };
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   try {
     const { saleId, returnDate, items, reason } = req.body;
     if (!saleId || !items || items.length === 0) return res.status(400).json({ error: 'Missing sale or items' });
@@ -42,16 +42,15 @@ exports.create = (req, res) => {
     }
 
     // Verify all returned stock items belong to the original sale
-    const saleStockIds = new Set(
-      db.prepare('SELECT stock_id FROM sale_items WHERE sale_id = ?').all(saleId).map(r => r.stock_id)
-    );
+    const saleItemRows = await db.prepare('SELECT stock_id FROM sale_items WHERE sale_id = ?').all(saleId);
+    const saleStockIds = new Set(saleItemRows.map(r => r.stock_id));
     for (const item of items) {
       if (!saleStockIds.has(Number(item.stockId)))
         return res.status(400).json({ error: `Item (stock id: ${item.stockId}) does not belong to this sale` });
     }
 
-    const run = db.transaction(() => {
-      const sr = db.prepare(
+    const run = db.transaction(async () => {
+      const sr = await db.prepare(
         `INSERT INTO sale_returns (sale_id, return_date, total_amount, reason) VALUES (?, ?, 0, ?)`
       ).run(saleId, returnDate || new Date().toISOString().split('T')[0], reason || '');
       const returnId = sr.lastInsertRowid;
@@ -59,20 +58,20 @@ exports.create = (req, res) => {
       for (const item of items) {
         const itemTotal = item.quantity * item.price;
         totalAmount += itemTotal;
-        db.prepare(
+        await db.prepare(
           `INSERT INTO sale_return_items (sale_return_id, stock_id, quantity, price, total) VALUES (?, ?, ?, ?, ?)`
         ).run(returnId, item.stockId, item.quantity, item.price, itemTotal);
-        db.prepare('UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        await db.prepare('UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run(item.quantity, item.stockId);
       }
-      db.prepare('UPDATE sale_returns SET total_amount = ? WHERE id = ?').run(totalAmount, returnId);
+      await db.prepare('UPDATE sale_returns SET total_amount = ? WHERE id = ?').run(totalAmount, returnId);
 
       // Post customer ledger credit (reduces what customer owes us)
-      const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId);
+      const sale = await db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId);
       if (sale?.customer_id) {
-        const customer = db.prepare('SELECT customer_type FROM customers WHERE id = ?').get(sale.customer_id);
+        const customer = await db.prepare('SELECT customer_type FROM customers WHERE id = ?').get(sale.customer_id);
         if (customer?.customer_type === 'WHOLESALER') {
-          createCustomerLedgerEntry(
+          await createCustomerLedgerEntry(
             sale.customer_id, 'SALE_RETURN', returnId, 'sale_return',
             0, totalAmount,
             `Sale Return — ${sale.bill_no || saleId}`
@@ -82,28 +81,28 @@ exports.create = (req, res) => {
 
       return db.prepare('SELECT * FROM sale_returns WHERE id = ?').get(returnId);
     });
-    res.status(201).json(run());
+    res.status(201).json(await run());
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   try {
-    const run = db.transaction(() => {
+    const run = db.transaction(async () => {
       const { id } = req.params;
-      const items = db.prepare('SELECT stock_id, quantity FROM sale_return_items WHERE sale_return_id = ?').all(id);
+      const items = await db.prepare('SELECT stock_id, quantity FROM sale_return_items WHERE sale_return_id = ?').all(id);
       for (const item of items) {
-        db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+        await db.prepare('UPDATE stocks SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run(item.quantity, item.stock_id);
       }
-      db.prepare('DELETE FROM sale_return_items WHERE sale_return_id = ?').run(id);
-      const row = db.prepare('SELECT * FROM sale_returns WHERE id = ?').get(id);
+      await db.prepare('DELETE FROM sale_return_items WHERE sale_return_id = ?').run(id);
+      const row = await db.prepare('SELECT * FROM sale_returns WHERE id = ?').get(id);
       if (!row) return null;
-      db.prepare('DELETE FROM sale_returns WHERE id = ?').run(id);
+      await db.prepare('DELETE FROM sale_returns WHERE id = ?').run(id);
       return row;
     });
-    const deleted = run();
+    const deleted = await run();
     if (!deleted) return res.status(404).json({ error: 'Sale return not found' });
     res.json({ message: 'Sale return deleted successfully' });
   } catch (error) {

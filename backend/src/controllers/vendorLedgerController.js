@@ -1,13 +1,13 @@
-﻿const db = require('../db/db');
+const db = require('../db/db');
 
-exports.getByVendor = (req, res) => {
+exports.getByVendor = async (req, res) => {
   try {
     const { vendorId } = req.params;
-    const vendor = db.prepare('SELECT * FROM vendors WHERE id = ?').get(vendorId);
+    const vendor = await db.prepare('SELECT * FROM vendors WHERE id = ?').get(vendorId);
     if (!vendor) return res.status(404).json({ error: 'Vendor not found' });
 
     // Fetch all non-opening entries in ASC order to compute running balance
-    const entries = db.prepare(
+    const entries = await db.prepare(
       `SELECT vl.*, v.company_name FROM vendor_ledger vl
        LEFT JOIN vendors v ON vl.vendor_id = v.id
        WHERE vl.vendor_id = ? AND vl.transaction_type != 'OPENING_BALANCE'
@@ -53,9 +53,9 @@ exports.getByVendor = (req, res) => {
   }
 };
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    res.json(db.prepare(
+    res.json(await db.prepare(
       `SELECT vl.*, v.company_name FROM vendor_ledger vl
        LEFT JOIN vendors v ON vl.vendor_id = v.id ORDER BY vl.transaction_date DESC`
     ).all());

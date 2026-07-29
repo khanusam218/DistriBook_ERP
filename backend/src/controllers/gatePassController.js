@@ -1,69 +1,69 @@
-﻿const db = require('../db/db');
+const db = require('../db/db');
 
-// â”€â”€ Staff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Staff ─────────────────────────────────────────────────────────────────────
 
-exports.getStaff = (req, res) => {
-  try { res.json(db.prepare('SELECT * FROM gate_pass_staff ORDER BY type, name').all()); }
+exports.getStaff = async (req, res) => {
+  try { res.json(await db.prepare('SELECT * FROM gate_pass_staff ORDER BY type, name').all()); }
   catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.addStaff = (req, res) => {
+exports.addStaff = async (req, res) => {
   try {
     const { name, type, mobile } = req.body;
     if (!name || !type) return res.status(400).json({ error: 'Name and type required' });
-    const r = db.prepare('INSERT INTO gate_pass_staff (name, type, mobile) VALUES (?, ?, ?)').run(name.trim(), type, mobile || '');
-    res.status(201).json(db.prepare('SELECT * FROM gate_pass_staff WHERE id = ?').get(r.lastInsertRowid));
+    const r = await db.prepare('INSERT INTO gate_pass_staff (name, type, mobile) VALUES (?, ?, ?)').run(name.trim(), type, mobile || '');
+    res.status(201).json(await db.prepare('SELECT * FROM gate_pass_staff WHERE id = ?').get(r.lastInsertRowid));
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.updateStaff = (req, res) => {
+exports.updateStaff = async (req, res) => {
   try {
     const { name, mobile } = req.body;
-    db.prepare('UPDATE gate_pass_staff SET name = ?, mobile = ? WHERE id = ?').run(name || '', mobile || '', req.params.staffId);
-    res.json(db.prepare('SELECT * FROM gate_pass_staff WHERE id = ?').get(req.params.staffId));
+    await db.prepare('UPDATE gate_pass_staff SET name = ?, mobile = ? WHERE id = ?').run(name || '', mobile || '', req.params.staffId);
+    res.json(await db.prepare('SELECT * FROM gate_pass_staff WHERE id = ?').get(req.params.staffId));
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Areas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Areas ─────────────────────────────────────────────────────────────────────
 
-exports.getAreas = (req, res) => {
-  try { res.json(db.prepare('SELECT * FROM ogp_areas ORDER BY name').all()); }
+exports.getAreas = async (req, res) => {
+  try { res.json(await db.prepare('SELECT * FROM ogp_areas ORDER BY name').all()); }
   catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.addArea = (req, res) => {
+exports.addArea = async (req, res) => {
   try {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: 'Name required' });
-    const r = db.prepare('INSERT INTO ogp_areas (name) VALUES (?)').run(name.trim());
-    res.status(201).json(db.prepare('SELECT * FROM ogp_areas WHERE id = ?').get(r.lastInsertRowid));
+    const r = await db.prepare('INSERT INTO ogp_areas (name) VALUES (?)').run(name.trim());
+    res.status(201).json(await db.prepare('SELECT * FROM ogp_areas WHERE id = ?').get(r.lastInsertRowid));
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.deleteArea = (req, res) => {
+exports.deleteArea = async (req, res) => {
   try {
-    db.prepare('DELETE FROM ogp_areas WHERE id = ?').run(req.params.areaId);
+    await db.prepare('DELETE FROM ogp_areas WHERE id = ?').run(req.params.areaId);
     res.json({ message: 'Deleted' });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.deleteStaff = (req, res) => {
+exports.deleteStaff = async (req, res) => {
   try {
-    db.prepare('DELETE FROM gate_pass_staff WHERE id = ?').run(req.params.staffId);
+    await db.prepare('DELETE FROM gate_pass_staff WHERE id = ?').run(req.params.staffId);
     res.json({ message: 'Deleted' });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Gate Pass list / detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Gate Pass list / detail ──────────────────────────────────────────────────
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    const passes = db.prepare(
+    const passes = await db.prepare(
       `SELECT gp.*, c.shop_name FROM gate_passes gp
        LEFT JOIN customers c ON gp.customer_id = c.id
        ORDER BY gp.ogp_number DESC`
     ).all();
-    const allItems = db.prepare(
+    const allItems = await db.prepare(
       `SELECT gpi.*, s.company_name as brand FROM gate_pass_items gpi
        LEFT JOIN stocks s ON gpi.stock_id = s.id`
     ).all();
@@ -76,14 +76,14 @@ exports.getAll = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.getById = (req, res) => {
+exports.getById = async (req, res) => {
   try {
-    const gp = db.prepare(
+    const gp = await db.prepare(
       `SELECT gp.*, c.shop_name, c.customer_name FROM gate_passes gp
        LEFT JOIN customers c ON gp.customer_id = c.id WHERE gp.id = ?`
     ).get(req.params.id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
-    const items = db.prepare(
+    const items = await db.prepare(
       `SELECT gpi.*, s.product_name, s.company_name as brand FROM gate_pass_items gpi
        LEFT JOIN stocks s ON gpi.stock_id = s.id WHERE gpi.gate_pass_id = ?`
     ).all(req.params.id);
@@ -91,34 +91,34 @@ exports.getById = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.getNextOgpNumber = (req, res) => {
+exports.getNextOgpNumber = async (req, res) => {
   try {
-    const row = db.prepare('SELECT COALESCE(MAX(ogp_number), 0) as mx FROM gate_passes').get();
+    const row = await db.prepare('SELECT COALESCE(MAX(ogp_number), 0) as mx FROM gate_passes').get();
     res.json({ ogpNumber: (row.mx || 0) + 1 });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Create OGP (header only â€” items handled via booking-items endpoint) â”€â”€â”€â”€â”€â”€â”€
+// ── Create OGP (header only — items handled via booking-items endpoint) ──────
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   try {
     const {
       customerId, ogpDate, ogpNumber,
       deliveryDate, mobile, saleRep, deliverySaleMan, deliveryMan, area, remarks
     } = req.body;
 
-    const run = db.transaction(() => {
+    const run = db.transaction(async () => {
       let nextNum;
       if (ogpNumber && Number(ogpNumber) > 0) {
         nextNum = Number(ogpNumber);
-        const existing = db.prepare('SELECT id FROM gate_passes WHERE ogp_number = ?').get(nextNum);
+        const existing = await db.prepare('SELECT id FROM gate_passes WHERE ogp_number = ?').get(nextNum);
         if (existing) throw new Error(`OGP #${nextNum} already exists`);
       } else {
-        const row = db.prepare('SELECT COALESCE(MAX(ogp_number), 0) as mx FROM gate_passes').get();
+        const row = await db.prepare('SELECT COALESCE(MAX(ogp_number), 0) as mx FROM gate_passes').get();
         nextNum = (row.mx || 0) + 1;
       }
 
-      const result = db.prepare(
+      const result = await db.prepare(
         `INSERT INTO gate_passes
            (ogp_number, ogp_date, delivery_date, mobile, customer_id,
             sale_rep, delivery_sale_man, delivery_man, area, total_qty, total_amount, remarks)
@@ -139,15 +139,15 @@ exports.create = (req, res) => {
       return db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(result.lastInsertRowid);
     });
 
-    res.status(201).json(run());
+    res.status(201).json(await run());
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Booking order items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Booking order items ───────────────────────────────────────────────────────
 
-exports.getBookingItems = (req, res) => {
+exports.getBookingItems = async (req, res) => {
   try {
-    const items = db.prepare(
+    const items = await db.prepare(
       `SELECT boi.*, s.pieces_per_ctn FROM booking_order_items boi
        LEFT JOIN stocks s ON boi.stock_id = s.id
        WHERE boi.gate_pass_id = ? ORDER BY boi.id`
@@ -156,33 +156,33 @@ exports.getBookingItems = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.saveBookingItems = (req, res) => {
+exports.saveBookingItems = async (req, res) => {
   try {
     const { id } = req.params;
     const { items = [] } = req.body;
 
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
 
-    db.transaction(() => {
+    await db.transaction(async () => {
       // 1. Restore stock from existing consolidated items
-      const oldItems = db.prepare(
+      const oldItems = await db.prepare(
         'SELECT stock_id, quantity FROM gate_pass_items WHERE gate_pass_id = ?'
       ).all(id);
       for (const item of oldItems) {
         if (item.stock_id) {
-          db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
+          await db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
             .run(item.quantity, item.stock_id);
         }
       }
 
       // 2. Clear old data
-      db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
-      db.prepare('DELETE FROM booking_order_items WHERE gate_pass_id = ?').run(id);
+      await db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
+      await db.prepare('DELETE FROM booking_order_items WHERE gate_pass_id = ?').run(id);
 
       // 3. Save raw booking items
       for (const item of items) {
-        db.prepare(
+        await db.prepare(
           `INSERT INTO booking_order_items
              (gate_pass_id, customer_id, shop_name, stock_id, brand,
               item_code, item_description, qty_ctn, qty_pieces, rate, amount, discount)
@@ -203,9 +203,9 @@ exports.saveBookingItems = (req, res) => {
         );
       }
 
-      // 4. Consolidate â†’ gate_pass_items
-      //    Rule: same brand + same item_code + same rate â†’ combine
-      //    Rule: same brand + same item_code + different rate â†’ separate lines
+      // 4. Consolidate → gate_pass_items
+      //    Rule: same brand + same item_code + same rate → combine
+      //    Rule: same brand + same item_code + different rate → separate lines
       const consolidated = {};
       for (const item of items) {
         const key = `${item.brand}||${item.item_code}||${Number(item.rate || 0).toFixed(4)}`;
@@ -228,14 +228,14 @@ exports.saveBookingItems = (req, res) => {
 
       let gpTotalQty = 0, gpTotalAmount = 0;
       for (const c of Object.values(consolidated)) {
-        db.prepare(
+        await db.prepare(
           `INSERT INTO gate_pass_items
              (gate_pass_id, stock_id, item_code, item_description, quantity, rate, total)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
         ).run(id, c.stock_id, c.item_code, c.item_description, c.qty_ctn, c.rate, c.total);
 
         if (c.stock_id) {
-          db.prepare('UPDATE stocks SET quantity = quantity - ? WHERE id = ?')
+          await db.prepare('UPDATE stocks SET quantity = quantity - ? WHERE id = ?')
             .run(c.qty_ctn, c.stock_id);
         }
         gpTotalQty += c.qty_ctn;
@@ -243,42 +243,42 @@ exports.saveBookingItems = (req, res) => {
       }
 
       // 5. Update totals on gate pass
-      db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
+      await db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
         .run(gpTotalQty, gpTotalAmount, id);
     })();
 
-    res.json({ success: true, gatePass: db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id) });
+    res.json({ success: true, gatePass: await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id) });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Consolidated items for Print GP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Consolidated items for Print GP ───────────────────────────────────────────
 // Returns gate_pass_items sorted by brand (vendor) then alphabetically
 
-exports.getConsolidated = (req, res) => {
+exports.getConsolidated = async (req, res) => {
   try {
-    const items = db.prepare(
+    const items = await db.prepare(
       `SELECT gpi.*, s.company_name as brand FROM gate_pass_items gpi
        LEFT JOIN stocks s ON gpi.stock_id = s.id
        WHERE gpi.gate_pass_id = ?
        ORDER BY LOWER(s.company_name) ASC, LOWER(gpi.item_description) ASC`
     ).all(req.params.id);
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
     res.json({ gatePass: gp, items });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Bill data for Bulk Invoice PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Bill data for Bulk Invoice PDF ────────────────────────────────────────────
 // Returns booking items grouped by shop
 
-exports.getBillData = (req, res) => {
+exports.getBillData = async (req, res) => {
   try {
-    const gp = db.prepare(
+    const gp = await db.prepare(
       `SELECT gp.*, c.shop_name as customer_shop FROM gate_passes gp
        LEFT JOIN customers c ON gp.customer_id = c.id WHERE gp.id = ?`
     ).get(req.params.id);
     if (!gp) return res.status(404).json({ error: 'Not found' });
 
-    const items = db.prepare(
+    const items = await db.prepare(
       `SELECT boi.* FROM booking_order_items boi
        WHERE boi.gate_pass_id = ?
        ORDER BY boi.shop_name ASC, boi.brand ASC, boi.item_description ASC`
@@ -295,18 +295,18 @@ exports.getBillData = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Update OGP header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Update OGP header ──────────────────────────────────────────────────────────
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { ogpNumber, deliveryDate, mobile, deliveryMan, deliverySaleMan, area, remarks } = req.body;
     // Check duplicate OGP number (excluding self)
     if (ogpNumber) {
-      const existing = db.prepare('SELECT id FROM gate_passes WHERE ogp_number = ? AND id != ?').get(Number(ogpNumber), id);
+      const existing = await db.prepare('SELECT id FROM gate_passes WHERE ogp_number = ? AND id != ?').get(Number(ogpNumber), id);
       if (existing) return res.status(400).json({ error: `OGP #${ogpNumber} already exists` });
     }
-    db.prepare(
+    await db.prepare(
       `UPDATE gate_passes SET
          ogp_number = COALESCE(?, ogp_number),
          delivery_date = ?,
@@ -326,15 +326,15 @@ exports.update = (req, res) => {
       remarks || '',
       id
     );
-    res.json(db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id));
+    res.json(await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id));
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Gate Pass Returns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Gate Pass Returns ──────────────────────────────────────────────────────────
 
-exports.getReturns = (req, res) => {
+exports.getReturns = async (req, res) => {
   try {
-    const returns = db.prepare(
+    const returns = await db.prepare(
       `SELECT r.*, GROUP_CONCAT(ri.id) as item_ids
        FROM gate_pass_returns r
        LEFT JOIN gate_pass_return_items ri ON ri.return_id = r.id
@@ -343,17 +343,18 @@ exports.getReturns = (req, res) => {
        ORDER BY r.created_at DESC`
     ).all(req.params.id);
 
-    const result = returns.map(r => ({
-      ...r,
-      items: db.prepare(
+    const result = [];
+    for (const r of returns) {
+      const items = await db.prepare(
         'SELECT * FROM gate_pass_return_items WHERE return_id = ? ORDER BY id'
-      ).all(r.id),
-    }));
+      ).all(r.id);
+      result.push({ ...r, items });
+    }
     res.json(result);
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.createReturn = (req, res) => {
+exports.createReturn = async (req, res) => {
   try {
     const { id } = req.params;
     const { customer_id, shop_name, return_date, notes, items = [] } = req.body;
@@ -361,13 +362,13 @@ exports.createReturn = (req, res) => {
     const validItems = items.filter(i => (Number(i.qty_ctn) || 0) > 0 || (Number(i.qty_pieces) || 0) > 0);
     if (!validItems.length) return res.status(400).json({ error: `No items to return — received ${items.length} items, qty_pieces=[${items.map(i=>i.qty_pieces).join(',')}], qty_ctn=[${items.map(i=>i.qty_ctn).join(',')}]` });
 
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
 
     let returnId;
-    db.transaction(() => {
+    await db.transaction(async () => {
       // 1. Save return header
-      const r = db.prepare(
+      const r = await db.prepare(
         `INSERT INTO gate_pass_returns (gate_pass_id, customer_id, shop_name, return_date, notes)
          VALUES (?, ?, ?, ?, ?)`
       ).run(id, customer_id || null, shop_name || '', return_date || '', notes || '');
@@ -381,14 +382,14 @@ exports.createReturn = (req, res) => {
         // A return can mix CTN + loose pieces for the same item (e.g. "1 CTN + 3 pcs") —
         // pricing only the CTN portion silently dropped the pieces' value.
         const stock = item.stock_id
-          ? db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stock_id)
+          ? await db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(item.stock_id)
           : null;
         const piecesPerCtn = Number(stock?.pieces_per_ctn) || 1;
         const amount = (qty * piecesPerCtn + qtyPcs) * rate;
         const net = amount;
 
         // 2. Save return item
-        db.prepare(
+        await db.prepare(
           `INSERT INTO gate_pass_return_items
              (return_id, stock_id, item_code, item_description, brand, qty_ctn, qty_pieces, rate, amount, net)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -405,7 +406,7 @@ exports.createReturn = (req, res) => {
 
         // 3. Restore stock (skip — stock was never deducted for piece-only items with qty_ctn=0)
         if (item.stock_id && !usePieces && qty > 0) {
-          db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
+          await db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
             .run(qty, item.stock_id);
         }
 
@@ -415,17 +416,17 @@ exports.createReturn = (req, res) => {
             // Piece-based return: deduct from qty_pieces column
             let remaining = qtyPcs;
             const boiRows = customer_id
-              ? db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? AND qty_pieces > 0 ORDER BY id`).all(id, item.stock_id, customer_id)
-              : db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND qty_pieces > 0 ORDER BY id`).all(id, item.stock_id);
+              ? await db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? AND qty_pieces > 0 ORDER BY id`).all(id, item.stock_id, customer_id)
+              : await db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND qty_pieces > 0 ORDER BY id`).all(id, item.stock_id);
             for (const boi of boiRows) {
               if (remaining <= 0) break;
               const deduct = Math.min(remaining, boi.qty_pieces);
               const newPcs = boi.qty_pieces - deduct;
               const newAmount = newPcs * boi.rate;
               if (newPcs <= 0 && (boi.qty_ctn || 0) <= 0) {
-                db.prepare('DELETE FROM booking_order_items WHERE id = ?').run(boi.id);
+                await db.prepare('DELETE FROM booking_order_items WHERE id = ?').run(boi.id);
               } else {
-                db.prepare('UPDATE booking_order_items SET qty_pieces = ?, amount = ? WHERE id = ?').run(newPcs, newAmount, boi.id);
+                await db.prepare('UPDATE booking_order_items SET qty_pieces = ?, amount = ? WHERE id = ?').run(newPcs, newAmount, boi.id);
               }
               remaining -= deduct;
             }
@@ -433,17 +434,17 @@ exports.createReturn = (req, res) => {
             // CTN-based return: deduct from qty_ctn column
             let remaining = qty;
             const boiRows = customer_id
-              ? db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? AND qty_ctn > 0 ORDER BY id`).all(id, item.stock_id, customer_id)
-              : db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND qty_ctn > 0 ORDER BY id`).all(id, item.stock_id);
+              ? await db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? AND qty_ctn > 0 ORDER BY id`).all(id, item.stock_id, customer_id)
+              : await db.prepare(`SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND qty_ctn > 0 ORDER BY id`).all(id, item.stock_id);
             for (const boi of boiRows) {
               if (remaining <= 0) break;
               const deduct = Math.min(remaining, boi.qty_ctn);
               const newQty = boi.qty_ctn - deduct;
               if (newQty <= 0) {
-                db.prepare('DELETE FROM booking_order_items WHERE id = ?').run(boi.id);
+                await db.prepare('DELETE FROM booking_order_items WHERE id = ?').run(boi.id);
               } else {
                 const newAmount = newQty * boi.rate;
-                db.prepare('UPDATE booking_order_items SET qty_ctn = ?, amount = ? WHERE id = ?').run(newQty, newAmount, boi.id);
+                await db.prepare('UPDATE booking_order_items SET qty_ctn = ?, amount = ? WHERE id = ?').run(newQty, newAmount, boi.id);
               }
               remaining -= deduct;
             }
@@ -452,9 +453,9 @@ exports.createReturn = (req, res) => {
       }
 
       // 5. Re-consolidate gate_pass_items from updated booking_order_items
-      //    (no stock changes â€” stock already adjusted above)
-      db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
-      const allBoi = db.prepare(
+      //    (no stock changes — stock already adjusted above)
+      await db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
+      const allBoi = await db.prepare(
         'SELECT * FROM booking_order_items WHERE gate_pass_id = ?'
       ).all(id);
 
@@ -479,7 +480,7 @@ exports.createReturn = (req, res) => {
       for (const c of Object.values(consolidated)) {
         gpTotalAmount += c.total; // include piece-only items in amount total
         if (c.qty_ctn <= 0) continue;
-        db.prepare(
+        await db.prepare(
           `INSERT INTO gate_pass_items
              (gate_pass_id, stock_id, item_code, item_description, quantity, rate, total)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -488,31 +489,31 @@ exports.createReturn = (req, res) => {
       }
 
       // 6. Update gate pass totals
-      db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
+      await db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
         .run(gpTotalQty, gpTotalAmount, id);
     })();
 
     res.status(201).json({
       success: true,
-      return: db.prepare('SELECT * FROM gate_pass_returns WHERE id = ?').get(returnId),
+      return: await db.prepare('SELECT * FROM gate_pass_returns WHERE id = ?').get(returnId),
     });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.deleteReturn = (req, res) => {
+exports.deleteReturn = async (req, res) => {
   try {
     const { id, returnId } = req.params;
 
-    const ret = db.prepare(
+    const ret = await db.prepare(
       'SELECT * FROM gate_pass_returns WHERE id = ? AND gate_pass_id = ?'
     ).get(returnId, id);
     if (!ret) return res.status(404).json({ error: 'Return not found' });
 
-    const returnItems = db.prepare(
+    const returnItems = await db.prepare(
       'SELECT * FROM gate_pass_return_items WHERE return_id = ?'
     ).all(returnId);
 
-    db.transaction(() => {
+    await db.transaction(async () => {
       for (const item of returnItems) {
         const qty = Number(item.qty_ctn) || 0;
         const qtyPcs = Number(item.qty_pieces) || 0;
@@ -523,7 +524,7 @@ exports.deleteReturn = (req, res) => {
         if (!usePieces) {
           // CTN return undo: re-deduct stock that was restored when return was created
           if (item.stock_id) {
-            db.prepare('UPDATE stocks SET quantity = quantity - ? WHERE id = ?')
+            await db.prepare('UPDATE stocks SET quantity = quantity - ? WHERE id = ?')
               .run(qty, item.stock_id);
           }
         }
@@ -534,19 +535,19 @@ exports.deleteReturn = (req, res) => {
           if (usePieces) {
             // Restore pieces: find the first matching row (gate-pass-wide or by customer)
             const existing = ret.customer_id
-              ? db.prepare(
+              ? await db.prepare(
                   `SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? ORDER BY id LIMIT 1`
                 ).get(id, item.stock_id, ret.customer_id)
-              : db.prepare(
+              : await db.prepare(
                   `SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? ORDER BY id LIMIT 1`
                 ).get(id, item.stock_id);
 
             if (existing) {
               const newPcs = existing.qty_pieces + qtyPcs;
-              db.prepare('UPDATE booking_order_items SET qty_pieces = ?, amount = ? WHERE id = ?')
+              await db.prepare('UPDATE booking_order_items SET qty_pieces = ?, amount = ? WHERE id = ?')
                 .run(newPcs, newPcs * existing.rate, existing.id);
             } else {
-              db.prepare(
+              await db.prepare(
                 `INSERT INTO booking_order_items
                    (gate_pass_id, customer_id, shop_name, stock_id, brand,
                     item_code, item_description, qty_ctn, qty_pieces, rate, amount, discount)
@@ -560,19 +561,19 @@ exports.deleteReturn = (req, res) => {
           } else {
             // CTN return undo: restore qty_ctn
             const existing = ret.customer_id
-              ? db.prepare(
+              ? await db.prepare(
                   `SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? AND customer_id = ? ORDER BY id LIMIT 1`
                 ).get(id, item.stock_id, ret.customer_id)
-              : db.prepare(
+              : await db.prepare(
                   `SELECT * FROM booking_order_items WHERE gate_pass_id = ? AND stock_id = ? ORDER BY id LIMIT 1`
                 ).get(id, item.stock_id);
 
             if (existing) {
               const newQty = existing.qty_ctn + qty;
-              db.prepare('UPDATE booking_order_items SET qty_ctn = ?, amount = ? WHERE id = ?')
+              await db.prepare('UPDATE booking_order_items SET qty_ctn = ?, amount = ? WHERE id = ?')
                 .run(newQty, newQty * existing.rate, existing.id);
             } else {
-              db.prepare(
+              await db.prepare(
                 `INSERT INTO booking_order_items
                    (gate_pass_id, customer_id, shop_name, stock_id, brand,
                     item_code, item_description, qty_ctn, qty_pieces, rate, amount, discount)
@@ -588,8 +589,8 @@ exports.deleteReturn = (req, res) => {
       }
 
       // Re-consolidate gate_pass_items from updated booking_order_items
-      db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
-      const allBoi = db.prepare(
+      await db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
+      const allBoi = await db.prepare(
         'SELECT * FROM booking_order_items WHERE gate_pass_id = ?'
       ).all(id);
 
@@ -613,7 +614,7 @@ exports.deleteReturn = (req, res) => {
       for (const c of Object.values(consolidated)) {
         gpTotalAmount += c.total; // include piece-only items in amount total
         if (c.qty_ctn <= 0) continue;
-        db.prepare(
+        await db.prepare(
           `INSERT INTO gate_pass_items
              (gate_pass_id, stock_id, item_code, item_description, quantity, rate, total)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -621,12 +622,12 @@ exports.deleteReturn = (req, res) => {
         gpTotalQty += c.qty_ctn;
       }
 
-      db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
+      await db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
         .run(gpTotalQty, gpTotalAmount, id);
 
       // Delete return items then header
-      db.prepare('DELETE FROM gate_pass_return_items WHERE return_id = ?').run(returnId);
-      db.prepare('DELETE FROM gate_pass_returns WHERE id = ?').run(returnId);
+      await db.prepare('DELETE FROM gate_pass_return_items WHERE return_id = ?').run(returnId);
+      await db.prepare('DELETE FROM gate_pass_returns WHERE id = ?').run(returnId);
     })();
 
     res.json({ success: true });
@@ -634,18 +635,18 @@ exports.deleteReturn = (req, res) => {
 };
 
 
-exports.updateBookingItemRates = (req, res) => {
+exports.updateBookingItemRates = async (req, res) => {
   try {
     const { id } = req.params;
     const { items = [] } = req.body;
 
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
 
-    db.transaction(() => {
+    await db.transaction(async () => {
       for (const item of items) {
         const rate = Number(item.rate) || 0;
-        const existing = db.prepare(
+        const existing = await db.prepare(
           'SELECT * FROM booking_order_items WHERE id = ? AND gate_pass_id = ?'
         ).get(item.id, id);
         if (!existing) continue;
@@ -653,18 +654,18 @@ exports.updateBookingItemRates = (req, res) => {
         // converted to a piece total before pricing, or amount silently drops the
         // remainder whenever the booked quantity isn't an exact multiple of carton size.
         const stock = existing.stock_id
-          ? db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(existing.stock_id)
+          ? await db.prepare('SELECT pieces_per_ctn FROM stocks WHERE id = ?').get(existing.stock_id)
           : null;
         const piecesPerCtn = Number(stock?.pieces_per_ctn) || 1;
         const totalPieces = Number(existing.qty_ctn) * piecesPerCtn + Number(existing.qty_pieces);
         const amount = totalPieces * rate;
-        db.prepare('UPDATE booking_order_items SET rate = ?, amount = ? WHERE id = ?')
+        await db.prepare('UPDATE booking_order_items SET rate = ?, amount = ? WHERE id = ?')
           .run(rate, amount, item.id);
       }
 
       // Re-consolidate gate_pass_items (without touching stock)
-      db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
-      const allBoi = db.prepare('SELECT * FROM booking_order_items WHERE gate_pass_id = ?').all(id);
+      await db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
+      const allBoi = await db.prepare('SELECT * FROM booking_order_items WHERE gate_pass_id = ?').all(id);
 
       const consolidated = {};
       for (const boi of allBoi) {
@@ -687,7 +688,7 @@ exports.updateBookingItemRates = (req, res) => {
         // Items booked as loose pieces only (qty_ctn = 0) must still be kept — skipping them
         // here silently dropped them from Print GP / Small DO / totals after any rate edit.
         if (c.qty_ctn <= 0 && c.total <= 0) continue;
-        db.prepare(
+        await db.prepare(
           `INSERT INTO gate_pass_items
              (gate_pass_id, stock_id, item_code, item_description, quantity, rate, total)
            VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -696,7 +697,7 @@ exports.updateBookingItemRates = (req, res) => {
         gpTotalAmount += c.total;
       }
 
-      db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
+      await db.prepare('UPDATE gate_passes SET total_qty = ?, total_amount = ? WHERE id = ?')
         .run(gpTotalQty, gpTotalAmount, id);
     })();
 
@@ -705,13 +706,13 @@ exports.updateBookingItemRates = (req, res) => {
 };
 
 
-exports.getPayments = (req, res) => {
+exports.getPayments = async (req, res) => {
   try {
     const gpId = Number(req.params.id);
-    const gp = db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(gpId);
+    const gp = await db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(gpId);
 
     // Bank/cash payments
-    const bankRows = db.prepare(`
+    const bankRows = await db.prepare(`
       SELECT cbt.id, cbt.debit AS amount, cbt.description, cbt.transaction_date AS date,
              ba.account_name, ba.account_type, cbt.account_id AS bank_account_id,
              'bank' AS source
@@ -724,7 +725,7 @@ exports.getPayments = (req, res) => {
     // Employee/REP payments (RECOVERY entries linked to this OGP's gatepass_number)
     let empRows = [];
     if (gp) {
-      empRows = db.prepare(`
+      empRows = await db.prepare(`
         SELECT el.id, el.credit AS amount, el.description, el.date,
                e.name AS account_name, 'REP' AS account_type, NULL AS bank_account_id,
                'employee' AS source, el.employee_id
@@ -739,30 +740,30 @@ exports.getPayments = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to fetch payments' }); }
 };
 
-exports.recordPayment = (req, res) => {
+exports.recordPayment = async (req, res) => {
   try {
     const { id } = req.params;
     const { amount, bankAccountId, employeeId, date, description } = req.body;
     if (!amount || Number(amount) <= 0) return res.status(400).json({ error: 'Amount required' });
 
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
 
-    db.transaction(() => {
+    await db.transaction(async () => {
       const payDate = date || new Date().toISOString().split('T')[0];
       const amt = Math.round(Number(amount) * 100) / 100;
       const desc = description || `Payment for OGP #${gp.ogp_number}`;
 
       // Credit employee ledger (RECOVERY — money received from field, reduces employee balance)
       if (employeeId) {
-        const emp = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId);
+        const emp = await db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId);
         if (emp) {
-          const rows = db.prepare(
+          const rows = await db.prepare(
             'SELECT balance FROM employee_ledger WHERE employee_id = ? ORDER BY date ASC, id ASC'
           ).all(employeeId);
           const lastBal = rows.length ? rows[rows.length - 1].balance : 0;
           const newBal = Math.round((lastBal - amt) * 100) / 100;
-          db.prepare(
+          await db.prepare(
             `INSERT INTO employee_ledger
                (employee_id, date, transaction_type, description, debit, credit, balance, gatepass_number)
              VALUES (?, ?, 'RECOVERY', ?, 0, ?, ?, ?)`
@@ -772,12 +773,12 @@ exports.recordPayment = (req, res) => {
 
       // Debit cash/bank account (money received into account)
       if (bankAccountId) {
-        const acc = db.prepare('SELECT opening_balance FROM bank_accounts WHERE id = ?').get(bankAccountId);
-        const txn = db.prepare(
+        const acc = await db.prepare('SELECT opening_balance FROM bank_accounts WHERE id = ?').get(bankAccountId);
+        const txn = await db.prepare(
           'SELECT COALESCE(SUM(debit - credit), 0) as txn FROM cash_bank_transactions WHERE account_id = ?'
         ).get(bankAccountId);
         const runningBal = Math.round(((acc?.opening_balance || 0) + (txn?.txn || 0) + amt) * 100) / 100;
-        db.prepare(
+        await db.prepare(
           `INSERT INTO cash_bank_transactions
              (account_id, transaction_type, reference_id, reference_type, debit, credit, balance, description, transaction_date)
            VALUES (?, 'RECEIPT', ?, 'gate_pass', ?, 0, ?, ?, ?)`
@@ -789,27 +790,27 @@ exports.recordPayment = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.deletePayment = (req, res) => {
+exports.deletePayment = async (req, res) => {
   try {
     const payId = Number(req.params.paymentId);
     const source = req.query.source || 'bank'; // 'bank' or 'employee'
 
     if (source === 'employee') {
-      const el = db.prepare('SELECT * FROM employee_ledger WHERE id = ?').get(payId);
+      const el = await db.prepare('SELECT * FROM employee_ledger WHERE id = ?').get(payId);
       if (!el) return res.status(404).json({ error: 'Payment not found' });
-      db.prepare('DELETE FROM employee_ledger WHERE id = ?').run(payId);
+      await db.prepare('DELETE FROM employee_ledger WHERE id = ?').run(payId);
     } else {
-      const txn = db.prepare('SELECT * FROM cash_bank_transactions WHERE id = ?').get(payId);
+      const txn = await db.prepare('SELECT * FROM cash_bank_transactions WHERE id = ?').get(payId);
       if (!txn) return res.status(404).json({ error: 'Payment not found' });
-      db.transaction(() => {
+      await db.transaction(async () => {
         // Also remove linked employee_ledger RECOVERY if any
-        const gp = db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(req.params.id);
+        const gp = await db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(req.params.id);
         if (gp) {
-          db.prepare(
+          await db.prepare(
             `DELETE FROM employee_ledger WHERE transaction_type = 'RECOVERY' AND gatepass_number = ? AND credit = ? AND date = ?`
           ).run(String(gp.ogp_number), txn.debit, txn.transaction_date);
         }
-        db.prepare('DELETE FROM cash_bank_transactions WHERE id = ?').run(payId);
+        await db.prepare('DELETE FROM cash_bank_transactions WHERE id = ?').run(payId);
       })();
     }
 
@@ -817,7 +818,7 @@ exports.deletePayment = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to delete payment' }); }
 };
 
-exports.updatePayment = (req, res) => {
+exports.updatePayment = async (req, res) => {
   try {
     const payId = Number(req.params.paymentId);
     const source = req.query.source || 'bank';
@@ -826,26 +827,26 @@ exports.updatePayment = (req, res) => {
     const amt = Math.round(Number(amount) * 100) / 100;
 
     if (source === 'employee') {
-      const el = db.prepare('SELECT * FROM employee_ledger WHERE id = ?').get(payId);
+      const el = await db.prepare('SELECT * FROM employee_ledger WHERE id = ?').get(payId);
       if (!el) return res.status(404).json({ error: 'Payment not found' });
       const payDate = date || el.date;
       const desc = description || el.description;
-      db.prepare(
+      await db.prepare(
         `UPDATE employee_ledger SET credit = ?, date = ?, description = ? WHERE id = ?`
       ).run(amt, payDate, desc, payId);
     } else {
-      const txn = db.prepare('SELECT * FROM cash_bank_transactions WHERE id = ?').get(payId);
+      const txn = await db.prepare('SELECT * FROM cash_bank_transactions WHERE id = ?').get(payId);
       if (!txn) return res.status(404).json({ error: 'Payment not found' });
       const payDate = date || txn.transaction_date;
       const desc = description || txn.description;
-      db.transaction(() => {
-        db.prepare(
+      await db.transaction(async () => {
+        await db.prepare(
           `UPDATE cash_bank_transactions SET debit = ?, transaction_date = ?, description = ? WHERE id = ?`
         ).run(amt, payDate, desc, payId);
         // Also update linked employee_ledger RECOVERY if any
-        const gp = db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(req.params.id);
+        const gp = await db.prepare('SELECT ogp_number FROM gate_passes WHERE id = ?').get(req.params.id);
         if (gp) {
-          db.prepare(
+          await db.prepare(
             `UPDATE employee_ledger SET credit = ?, date = ?, description = ? WHERE transaction_type = 'RECOVERY' AND gatepass_number = ? AND credit = ? AND date = ?`
           ).run(amt, payDate, desc, String(gp.ogp_number), txn.debit, txn.transaction_date);
         }
@@ -856,48 +857,48 @@ exports.updatePayment = (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to update payment' }); }
 };
 
-exports.closeGatePass = (req, res) => {
+exports.closeGatePass = async (req, res) => {
   try {
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
-    db.prepare("UPDATE gate_passes SET status = 'CLOSED' WHERE id = ?").run(req.params.id);
+    await db.prepare("UPDATE gate_passes SET status = 'CLOSED' WHERE id = ?").run(req.params.id);
     res.json({ success: true, status: 'CLOSED' });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-exports.reopenGatePass = (req, res) => {
+exports.reopenGatePass = async (req, res) => {
   try {
-    const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
+    const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(req.params.id);
     if (!gp) return res.status(404).json({ error: 'Gate pass not found' });
-    db.prepare("UPDATE gate_passes SET status = 'OPEN' WHERE id = ?").run(req.params.id);
+    await db.prepare("UPDATE gate_passes SET status = 'OPEN' WHERE id = ?").run(req.params.id);
     res.json({ success: true, status: 'OPEN' });
   } catch (e) { res.status(500).json({ error: 'Gate pass operation failed' }); }
 };
 
-// â”€â”€ Delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Delete ────────────────────────────────────────────────────────────────────
 
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   try {
-    db.transaction(() => {
+    await db.transaction(async () => {
       const { id } = req.params;
-      const gp = db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
+      const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
       if (!gp) throw new Error('Gate pass not found');
 
       // Restore stock
-      const items = db.prepare(
+      const items = await db.prepare(
         'SELECT stock_id, quantity FROM gate_pass_items WHERE gate_pass_id = ?'
       ).all(id);
       for (const item of items) {
         if (item.stock_id) {
-          db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
+          await db.prepare('UPDATE stocks SET quantity = quantity + ? WHERE id = ?')
             .run(item.quantity, item.stock_id);
         }
       }
 
-      db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
-      db.prepare('DELETE FROM booking_order_items WHERE gate_pass_id = ?').run(id);
-      db.prepare('DELETE FROM customer_ledger WHERE reference_id = ? AND reference_type = ?').run(id, 'gate_pass');
-      db.prepare('DELETE FROM gate_passes WHERE id = ?').run(id);
+      await db.prepare('DELETE FROM gate_pass_items WHERE gate_pass_id = ?').run(id);
+      await db.prepare('DELETE FROM booking_order_items WHERE gate_pass_id = ?').run(id);
+      await db.prepare('DELETE FROM customer_ledger WHERE reference_id = ? AND reference_type = ?').run(id, 'gate_pass');
+      await db.prepare('DELETE FROM gate_passes WHERE id = ?').run(id);
     })();
 
     res.json({ success: true });

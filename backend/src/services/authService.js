@@ -7,7 +7,7 @@ const JWT_EXPIRY = '7d';
 
 async function registerUser(username, email, password, fullName, role = 'user', businessName = '') {
   const hashedPassword = await bcrypt.hash(password.trim(), 10);
-  const result = db.prepare(
+  const result = await db.prepare(
     `INSERT INTO users (username, email, password, full_name, is_active, role, permissions, business_name)
      VALUES (?, ?, ?, ?, 1, ?, ?, ?)`
   ).run(username, email, hashedPassword, fullName || '', role, '{}', businessName || '');
@@ -17,7 +17,7 @@ async function registerUser(username, email, password, fullName, role = 'user', 
 }
 
 async function authenticateUser(username, password) {
-  const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username.trim());
+  const user = await db.prepare('SELECT * FROM users WHERE username = ? AND is_active = 1').get(username.trim());
   if (!user) return null;
   const valid = await bcrypt.compare(password.trim(), user.password);
   if (!valid) return null;
@@ -33,25 +33,25 @@ function verifyToken(token) {
   try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
 }
 
-function getAllUsers() {
+async function getAllUsers() {
   return db.prepare(
     'SELECT id, username, email, full_name, is_active, role, permissions, business_name, created_at FROM users ORDER BY id'
   ).all();
 }
 
-function getUserById(id) {
+async function getUserById(id) {
   return db.prepare(
     'SELECT id, username, email, full_name, is_active, role, permissions, business_name FROM users WHERE id = ?'
   ).get(id);
 }
 
 async function updateUser(id, { username, email, fullName, password, role, permissions, isActive }) {
-  const existing = db.prepare('SELECT id, username, email, full_name, password, role, permissions, is_active, business_name FROM users WHERE id = ?').get(id);
+  const existing = await db.prepare('SELECT id, username, email, full_name, password, role, permissions, is_active, business_name FROM users WHERE id = ?').get(id);
   if (!existing) return null;
 
   const hashedPassword = password ? await bcrypt.hash(password, 10) : existing.password;
 
-  db.prepare(
+  await db.prepare(
     `UPDATE users SET
        username = ?, email = ?, full_name = ?, password = ?,
        role = ?, permissions = ?, is_active = ?,
@@ -71,15 +71,15 @@ async function updateUser(id, { username, email, fullName, password, role, permi
 }
 
 async function verifyPassword(userId, password) {
-  const user = db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
+  const user = await db.prepare('SELECT password FROM users WHERE id = ?').get(userId);
   if (!user) return false;
   return bcrypt.compare(String(password || '').trim(), user.password);
 }
 
-function deleteUser(id) {
-  const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
+async function deleteUser(id) {
+  const user = await db.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
   if (!user) return null;
-  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  await db.prepare('DELETE FROM users WHERE id = ?').run(id);
   return user;
 }
 

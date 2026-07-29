@@ -1,77 +1,80 @@
-﻿const db = require('../db/db');
+const db = require('../db/db');
 
-function getAccountBalance(accountId) {
-  const acc = db.prepare('SELECT opening_balance FROM bank_accounts WHERE id = ?').get(accountId);
-  const row = db.prepare('SELECT COALESCE(SUM(debit - credit), 0) as txn FROM cash_bank_transactions WHERE account_id = ?').get(accountId);
+async function getAccountBalance(accountId) {
+  const acc = await db.prepare('SELECT opening_balance FROM bank_accounts WHERE id = ?').get(accountId);
+  const row = await db.prepare('SELECT COALESCE(SUM(debit - credit), 0) as txn FROM cash_bank_transactions WHERE account_id = ?').get(accountId);
   return (acc?.opening_balance || 0) + (row?.txn || 0);
 }
 
-exports.createCashBankEntry = function (accountId, transactionType, referenceId, referenceType, debit, credit, description, date) {
-  const balance = getAccountBalance(accountId) + debit - credit;
-  db.prepare(`
+exports.createCashBankEntry = async function (accountId, transactionType, referenceId, referenceType, debit, credit, description, date) {
+  const balance = (await getAccountBalance(accountId)) + debit - credit;
+  await db.prepare(`
     INSERT INTO cash_bank_transactions (account_id, transaction_type, reference_id, reference_type, debit, credit, balance, description, transaction_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(accountId, transactionType, referenceId, referenceType, debit, credit, balance, description, date || new Date().toISOString().split('T')[0]);
 };
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    const accounts = db.prepare('SELECT * FROM bank_accounts ORDER BY account_type, account_name').all();
-    const withBalances = accounts.map(acc => ({
-      ...acc,
-      balance: getAccountBalance(acc.id),
-    }));
+    const accounts = await db.prepare('SELECT * FROM bank_accounts ORDER BY account_type, account_name').all();
+    const withBalances = [];
+    for (const acc of accounts) {
+      withBalances.push({
+        ...acc,
+        balance: await getAccountBalance(acc.id),
+      });
+    }
     res.json(withBalances);
   } catch (err) {
     res.status(500).json({ error: 'Bank account operation failed' });
   }
 };
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   try {
     const { account_name, account_type, bank_name, account_number, opening_balance } = req.body;
     if (!account_name) return res.status(400).json({ error: 'Account name required' });
-    const result = db.prepare(`
+    const result = await db.prepare(`
       INSERT INTO bank_accounts (account_name, account_type, bank_name, account_number, opening_balance)
       VALUES (?, ?, ?, ?, ?)
     `).run(account_name, account_type || 'CASH', bank_name || '', account_number || '', opening_balance || 0);
-    const account = db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(result.lastInsertRowid);
-    res.json({ ...account, balance: getAccountBalance(account.id) });
+    const account = await db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(result.lastInsertRowid);
+    res.json({ ...account, balance: await getAccountBalance(account.id) });
   } catch (err) {
     res.status(500).json({ error: 'Bank account operation failed' });
   }
 };
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { account_name, account_type, bank_name, account_number, opening_balance } = req.body;
-    db.prepare(`
+    await db.prepare(`
       UPDATE bank_accounts SET account_name=?, account_type=?, bank_name=?, account_number=?, opening_balance=? WHERE id=?
     `).run(account_name, account_type, bank_name || '', account_number || '', opening_balance || 0, id);
-    const account = db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id);
-    res.json({ ...account, balance: getAccountBalance(id) });
+    const account = await db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id);
+    res.json({ ...account, balance: await getAccountBalance(id) });
   } catch (err) {
     res.status(500).json({ error: 'Bank account operation failed' });
   }
 };
 
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    db.prepare('DELETE FROM bank_accounts WHERE id = ?').run(id);
+    await db.prepare('DELETE FROM bank_accounts WHERE id = ?').run(id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Bank account operation failed' });
   }
 };
 
-exports.getTransactions = (req, res) => {
+exports.getTransactions = async (req, res) => {
   try {
     const { id } = req.params;
-    const account = db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id);
+    const account = await db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id);
     if (!account) return res.status(404).json({ error: 'Account not found' });
-    const entries = db.prepare(
+    const entries = await db.prepare(
       'SELECT * FROM cash_bank_transactions WHERE account_id = ? ORDER BY transaction_date ASC, id ASC'
     ).all(id);
     let balance = account.opening_balance || 0;
@@ -80,7 +83,7 @@ exports.getTransactions = (req, res) => {
       return { ...t, balance };
     });
     transactions.reverse();
-    res.json({ account: { ...account, balance: getAccountBalance(id) }, transactions });
+    res.json({ account: { ...account, balance: await getAccountBalance(id) }, transactions });
   } catch (err) {
     res.status(500).json({ error: 'Bank account operation failed' });
   }

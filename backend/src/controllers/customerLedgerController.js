@@ -1,9 +1,9 @@
 const db = require('../db/db');
 
-exports.getByCustomer = (req, res) => {
+exports.getByCustomer = async (req, res) => {
   try {
     const { customerId } = req.params;
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(customerId);
+    const customer = await db.prepare('SELECT * FROM customers WHERE id = ?').get(customerId);
     if (!customer) return res.status(404).json({ error: 'Customer not found' });
     if (customer.customer_type !== 'WHOLESALER') {
       return res.status(403).json({ error: 'Ledger only available for wholesaler customers' });
@@ -12,7 +12,7 @@ exports.getByCustomer = (req, res) => {
     const openingBalance = Number(customer.opening_balance) || 0;
 
     // Fetch non-opening entries in ASC order for running balance calculation
-    const entries = db.prepare(
+    const entries = await db.prepare(
       `SELECT cl.*, c.shop_name FROM customer_ledger cl
        LEFT JOIN customers c ON cl.customer_id = c.id
        WHERE cl.customer_id = ? AND cl.transaction_type != 'OPENING_BALANCE'
@@ -56,9 +56,9 @@ exports.getByCustomer = (req, res) => {
   }
 };
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    res.json(db.prepare(
+    res.json(await db.prepare(
       `SELECT cl.*, c.shop_name FROM customer_ledger cl
        LEFT JOIN customers c ON cl.customer_id = c.id
        WHERE c.customer_type = 'WHOLESALER' ORDER BY cl.transaction_date DESC`

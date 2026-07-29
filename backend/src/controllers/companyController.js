@@ -1,30 +1,34 @@
-﻿const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const db = require('../db/db');
 
-exports.get = (req, res) => {
+// company_settings now has one row PER TENANT (business_owner_id), instead of
+// a single hardcoded `id = 1` row — the tenant filter (auto-applied by the
+// db wrapper) already scopes these queries to the current tenant's row, so we
+// just grab it without an id condition.
+
+exports.get = async (req, res) => {
   try {
-    const row = db.prepare('SELECT * FROM company_settings WHERE id = 1').get();
+    const row = await db.prepare('SELECT * FROM company_settings LIMIT 1').get();
     res.json(row || {});
   } catch (e) {
     res.status(500).json({ error: 'Company settings operation failed' });
   }
 };
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   try {
     const { name, tagline, address, city, phone, mobile, email, website, ntn, strn } = req.body;
-    db.prepare(`
+    await db.prepare(`
       UPDATE company_settings SET
         name = ?, tagline = ?, address = ?, city = ?, phone = ?, mobile = ?,
         email = ?, website = ?, ntn = ?, strn = ?,
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = 1
     `).run(
       name || '', tagline || '', address || '', city || '',
       phone || '', mobile || '', email || '', website || '',
       ntn || '', strn || ''
     );
-    const updated = db.prepare('SELECT * FROM company_settings WHERE id = 1').get();
+    const updated = await db.prepare('SELECT * FROM company_settings LIMIT 1').get();
     res.json(updated);
   } catch (e) {
     res.status(500).json({ error: 'Company settings operation failed' });
@@ -36,9 +40,9 @@ exports.update = (req, res) => {
 // when deleting records. If none is set, verifyDeletePassword falls back to
 // the requesting user's own login password.
 
-exports.getDeletePasswordStatus = (req, res) => {
+exports.getDeletePasswordStatus = async (req, res) => {
   try {
-    const row = db.prepare('SELECT delete_password_hash FROM company_settings WHERE id = 1').get();
+    const row = await db.prepare('SELECT delete_password_hash FROM company_settings LIMIT 1').get();
     res.json({ isSet: !!row?.delete_password_hash });
   } catch (e) {
     res.status(500).json({ error: 'Failed to check delete password status' });
@@ -47,7 +51,7 @@ exports.getDeletePasswordStatus = (req, res) => {
 
 exports.setDeletePassword = async (req, res) => {
   try {
-    const userRow = db.authDb.prepare('SELECT role, password FROM users WHERE id = ?').get(req.user.userId);
+    const userRow = await db.authDb.prepare('SELECT role, password FROM users WHERE id = ?').get(req.user.userId);
     if (!userRow || userRow.role !== 'admin')
       return res.status(403).json({ error: 'Admin access required' });
 
@@ -61,7 +65,7 @@ exports.setDeletePassword = async (req, res) => {
     if (!validCurrent) return res.status(401).json({ error: 'Your login password is incorrect' });
 
     const hash = await bcrypt.hash(String(newPassword).trim(), 10);
-    db.prepare('UPDATE company_settings SET delete_password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1').run(hash);
+    await db.prepare('UPDATE company_settings SET delete_password_hash = ?, updated_at = CURRENT_TIMESTAMP').run(hash);
     res.json({ success: true });
   } catch (e) {
     console.error('setDeletePassword error:', e);
@@ -71,7 +75,7 @@ exports.setDeletePassword = async (req, res) => {
 
 exports.removeDeletePassword = async (req, res) => {
   try {
-    const userRow = db.authDb.prepare('SELECT role, password FROM users WHERE id = ?').get(req.user.userId);
+    const userRow = await db.authDb.prepare('SELECT role, password FROM users WHERE id = ?').get(req.user.userId);
     if (!userRow || userRow.role !== 'admin')
       return res.status(403).json({ error: 'Admin access required' });
 
@@ -80,7 +84,7 @@ exports.removeDeletePassword = async (req, res) => {
     const validCurrent = await bcrypt.compare(String(currentPassword).trim(), userRow.password);
     if (!validCurrent) return res.status(401).json({ error: 'Your login password is incorrect' });
 
-    db.prepare('UPDATE company_settings SET delete_password_hash = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 1').run();
+    await db.prepare('UPDATE company_settings SET delete_password_hash = NULL, updated_at = CURRENT_TIMESTAMP').run();
     res.json({ success: true });
   } catch (e) {
     console.error('removeDeletePassword error:', e);
@@ -93,12 +97,12 @@ exports.verifyDeletePassword = async (req, res) => {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: 'Password is required' });
 
-    const settings = db.prepare('SELECT delete_password_hash FROM company_settings WHERE id = 1').get();
+    const settings = await db.prepare('SELECT delete_password_hash FROM company_settings LIMIT 1').get();
     let ok;
     if (settings?.delete_password_hash) {
       ok = await bcrypt.compare(String(password).trim(), settings.delete_password_hash);
     } else {
-      const userRow = db.authDb.prepare('SELECT password FROM users WHERE id = ?').get(req.user.userId);
+      const userRow = await db.authDb.prepare('SELECT password FROM users WHERE id = ?').get(req.user.userId);
       ok = userRow ? await bcrypt.compare(String(password).trim(), userRow.password) : false;
     }
     if (!ok) return res.status(401).json({ error: 'Incorrect password' });

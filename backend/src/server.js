@@ -17,17 +17,15 @@ async function dbMiddleware(req, res, next) {
     if (!token) return next();
     const decoded = verifyToken(token);
     if (!decoded) return next();
-    const userRow = db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(decoded.userId);
+    const userRow = await db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(decoded.userId);
     if (!userRow) return next();
 
-    if (userRow.business_owner_id === null || userRow.business_owner_id === undefined) {
-      // Legacy user (existed before multi-tenancy) — use shared thok.db
-      db.setContext(db.authDb, next);
-    } else {
-      // New user — use their own isolated business database
-      const bizDb = await db.getBusinessDb(Number(userRow.business_owner_id));
-      db.setContext(bizDb, next);
-    }
+    // Every user (including legacy pre-multi-tenancy accounts, backfilled at
+    // startup — see db.js initAuthTables) now has a real business_owner_id.
+    // Fall back to their own id defensively in case that backfill hasn't run yet.
+    const ownerId = userRow.business_owner_id ?? userRow.id;
+    const bizDb = await db.getBusinessDb(Number(ownerId));
+    db.setContext(bizDb, next);
   } catch {
     next();
   }

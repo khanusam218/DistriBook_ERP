@@ -14,8 +14,8 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     const email = `${username}@distribookerp.local`;
     const user = await registerUser(username, email, password, fullName || '', 'admin', businessName || '');
-    // Set business_owner_id = own id so this user gets their own isolated database
-    db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(user.id, user.id);
+    // Set business_owner_id = own id so this user gets their own isolated tenant scope
+    await db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(user.id, user.id);
     const token = generateToken(user.id, user.username);
     let permissions = {};
     try { permissions = JSON.parse(user.permissions || '{}'); } catch {}
@@ -33,7 +33,7 @@ exports.register = async (req, res) => {
     });
   } catch (e) {
     console.error('register error:', e);
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+    if (e.code === 'ER_DUP_ENTRY' || (e.message && e.message.includes('UNIQUE constraint failed'))) {
       return res.status(409).json({ error: 'Username already exists' });
     }
     res.status(500).json({ error: 'Registration failed' });
@@ -72,7 +72,7 @@ exports.login = async (req, res) => {
 
 exports.verifyToken = async (req, res) => {
   try {
-    const userRow = db.authDb.prepare(
+    const userRow = await db.authDb.prepare(
       'SELECT id, username, email, full_name, business_name, role, permissions FROM users WHERE id = ?'
     ).get(req.user.userId);
     let permissions = {};
@@ -110,8 +110,8 @@ exports.verifyPassword = async (req, res) => {
 
 // ── User Management (admin only) ─────────────────────────────────────────────
 
-function requireAdmin(req, res) {
-  const userRow = db.authDb.prepare('SELECT role FROM users WHERE id = ?').get(req.user?.userId);
+async function requireAdmin(req, res) {
+  const userRow = await db.authDb.prepare('SELECT role FROM users WHERE id = ?').get(req.user?.userId);
   if (!userRow || userRow.role !== 'admin') {
     res.status(403).json({ error: 'Admin access required' });
     return false;
@@ -119,10 +119,10 @@ function requireAdmin(req, res) {
   return true;
 }
 
-exports.listUsers = (req, res) => {
+exports.listUsers = async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
-    const users = getAllUsers().map(u => ({
+    if (!(await requireAdmin(req, res))) return;
+    const users = (await getAllUsers()).map(u => ({
       ...u,
       permissions: (() => { try { return JSON.parse(u.permissions || '{}'); } catch { return {}; } })(),
     }));
@@ -132,35 +132,32 @@ exports.listUsers = (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdmin(req, res))) return;
     const { username, email, password, fullName, role, permissions } = req.body;
     if (!username || !password)
       return res.status(400).json({ error: 'Username and password are required' });
 
-    // Resolve admin's business_owner_id so sub-user inherits the same business db
-    const adminRow = db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(req.user.userId);
+    // Resolve admin's business_owner_id so sub-user inherits the same business context
+    const adminRow = await db.authDb.prepare('SELECT id, business_owner_id FROM users WHERE id = ?').get(req.user.userId);
 
     const user = await registerUser(username, email || `${username}@distribookerp.local`, password, fullName, role || 'user');
 
-    // Sub-user always shares the exact same business context as the creating admin:
-    // legacy admins (business_owner_id null) use the shared auth db as their business db,
-    // so sub-users must stay null too to land in that same db, not a new isolated one.
-    const inheritedOwnerId = adminRow?.business_owner_id ?? null;
+    // Sub-user always shares the exact same business context as the creating admin.
+    const inheritedOwnerId = adminRow?.business_owner_id ?? adminRow?.id ?? user.id;
 
-    // Sub-user inherits admin's business, or gets their own isolated DB
-    db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(inheritedOwnerId, user.id);
+    await db.authDb.prepare('UPDATE users SET business_owner_id = ? WHERE id = ?').run(inheritedOwnerId, user.id);
 
     if (permissions) {
       await updateUser(user.id, { permissions });
     }
-    const fresh = getUserById(user.id);
+    const fresh = await getUserById(user.id);
     res.status(201).json({
       ...fresh,
       permissions: (() => { try { return JSON.parse(fresh?.permissions || '{}'); } catch { return {}; } })(),
     });
   } catch (e) {
     console.error('createUser error:', e);
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+    if (e.code === 'ER_DUP_ENTRY' || (e.message && e.message.includes('UNIQUE constraint failed'))) {
       return res.status(409).json({ error: 'Username already exists' });
     }
     res.status(500).json({ error: 'Failed to create user' });
@@ -169,7 +166,7 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdmin(req, res))) return;
     const { id } = req.params;
     // Prevent demoting yourself
     if (Number(id) === req.user.userId && req.body.role === 'user') {
@@ -184,13 +181,13 @@ exports.updateUser = async (req, res) => {
   } catch (e) { console.error('updateUser error:', e); res.status(500).json({ error: 'Failed to update user' }); }
 };
 
-exports.deleteUser = (req, res) => {
+exports.deleteUser = async (req, res) => {
   try {
-    if (!requireAdmin(req, res)) return;
+    if (!(await requireAdmin(req, res))) return;
     const { id } = req.params;
     if (Number(id) === req.user.userId)
       return res.status(400).json({ error: 'Cannot delete your own account' });
-    const deleted = deleteUser(id);
+    const deleted = await deleteUser(id);
     if (!deleted) return res.status(404).json({ error: 'User not found' });
     res.json({ message: 'User deleted' });
   } catch (e) { console.error('deleteUser error:', e); res.status(500).json({ error: 'Failed to delete user' }); }

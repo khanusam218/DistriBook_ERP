@@ -1,14 +1,14 @@
 const db = require('../db/db');
 
-function getTrialBalance() {
-  const vendors = db.prepare(
+async function getTrialBalance() {
+  const vendors = await db.prepare(
     `SELECT v.id, v.company_name as account_name, 'VENDOR' as account_type,
             COALESCE(SUM(CASE WHEN vl.debit > 0 THEN vl.debit ELSE 0 END), 0) as debit,
             COALESCE(SUM(CASE WHEN vl.credit > 0 THEN vl.credit ELSE 0 END), 0) as credit
      FROM vendors v LEFT JOIN vendor_ledger vl ON v.id = vl.vendor_id
      GROUP BY v.id, v.company_name`
   ).all();
-  const customers = db.prepare(
+  const customers = await db.prepare(
     `SELECT c.id, c.shop_name as account_name, 'CUSTOMER' as account_type,
             COALESCE(SUM(CASE WHEN cl.debit > 0 THEN cl.debit ELSE 0 END), 0) as debit,
             COALESCE(SUM(CASE WHEN cl.credit > 0 THEN cl.credit ELSE 0 END), 0) as credit
@@ -18,11 +18,11 @@ function getTrialBalance() {
   return { vendors, customers };
 }
 
-function getInventoryReport() {
+async function getInventoryReport() {
   return db.prepare('SELECT * FROM stocks ORDER BY company_name, product_name').all();
 }
 
-function getPurchaseReport(startDate, endDate) {
+async function getPurchaseReport(startDate, endDate) {
   return db.prepare(
     `SELECT p.id, p.purchase_date, p.invoice_no, v.company_name, s.product_name,
             pi.quantity, pi.purchase_price, pi.total
@@ -32,7 +32,7 @@ function getPurchaseReport(startDate, endDate) {
   ).all(startDate, endDate);
 }
 
-function getSalesReport(startDate, endDate) {
+async function getSalesReport(startDate, endDate) {
   return db.prepare(
     `SELECT s.id, s.sale_date, s.gate_pass_no, s.bill_no,
             COALESCE(c.shop_name, 'Direct Sale') as customer_name,

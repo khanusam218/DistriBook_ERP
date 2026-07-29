@@ -7,19 +7,19 @@ const CATEGORIES = [
   'Insurance', 'Taxes & Fees', 'Miscellaneous',
 ];
 
-function getNextExpenseNo() {
+async function getNextExpenseNo() {
   const year = new Date().getFullYear();
-  const row = db.prepare(
-    `SELECT MAX(CAST(SUBSTR(expense_no, 10) AS INTEGER)) as mx FROM expenses WHERE expense_no LIKE 'EXP-${year}-%'`
+  const row = await db.prepare(
+    `SELECT MAX(CAST(SUBSTR(expense_no, 10) AS UNSIGNED)) as mx FROM expenses WHERE expense_no LIKE 'EXP-${year}-%'`
   ).get();
   return `EXP-${year}-${String((row?.mx || 0) + 1).padStart(4, '0')}`;
 }
 
-exports.getCategories = (_req, res) => res.json(CATEGORIES);
+exports.getCategories = async (_req, res) => res.json(CATEGORIES);
 
-exports.getAll = (req, res) => {
+exports.getAll = async (req, res) => {
   try {
-    const rows = db.prepare(
+    const rows = await db.prepare(
       `SELECT e.*, ba.account_name FROM expenses e
        LEFT JOIN bank_accounts ba ON e.bank_account_id = ba.id
        ORDER BY e.expense_date DESC, e.id DESC`
@@ -30,22 +30,22 @@ exports.getAll = (req, res) => {
   }
 };
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   try {
     const { expense_date, category, description, amount, payment_method, bank_account_id, notes } = req.body;
     if (!category || !amount || Number(amount) <= 0) {
       return res.status(400).json({ error: 'Category and amount are required' });
     }
-    const expense_no = getNextExpenseNo();
+    const expense_no = await getNextExpenseNo();
     const date = expense_date || new Date().toISOString().split('T')[0];
 
-    const result = db.prepare(
+    const result = await db.prepare(
       `INSERT INTO expenses (expense_no, expense_date, category, description, amount, payment_method, bank_account_id, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(expense_no, date, category, description || '', Number(amount), payment_method || 'CASH', bank_account_id || null, notes || '');
 
     if (bank_account_id) {
-      createCashBankEntry(
+      await createCashBankEntry(
         bank_account_id, 'EXPENSE', result.lastInsertRowid, 'expense',
         0, Number(amount),
         `Expense ${expense_no} — ${category}${description ? ': ' + description : ''}`,
@@ -53,7 +53,7 @@ exports.create = (req, res) => {
       );
     }
 
-    const row = db.prepare(
+    const row = await db.prepare(
       `SELECT e.*, ba.account_name FROM expenses e LEFT JOIN bank_accounts ba ON e.bank_account_id = ba.id WHERE e.id = ?`
     ).get(result.lastInsertRowid);
     res.status(201).json(row);
@@ -62,10 +62,10 @@ exports.create = (req, res) => {
   }
 };
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   try {
     const { id } = req.params;
-    const existing = db.prepare('SELECT * FROM expenses WHERE id = ?').get(id);
+    const existing = await db.prepare('SELECT * FROM expenses WHERE id = ?').get(id);
     if (!existing) return res.status(404).json({ error: 'Expense not found' });
 
     const { expense_date, category, description, amount, payment_method, bank_account_id, notes } = req.body;
@@ -79,7 +79,7 @@ exports.update = (req, res) => {
 
     // Reverse old cash/bank entry if any
     if (existing.bank_account_id) {
-      createCashBankEntry(
+      await createCashBankEntry(
         existing.bank_account_id, 'REVERSAL', id, 'expense',
         existing.amount, 0,
         `Reversal of ${existing.expense_no}`,
@@ -87,12 +87,12 @@ exports.update = (req, res) => {
       );
     }
 
-    db.prepare(
+    await db.prepare(
       `UPDATE expenses SET expense_date=?, category=?, description=?, amount=?, payment_method=?, bank_account_id=?, notes=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`
     ).run(newDate, newCat, newDesc, newAmt, newMethod, newBankId, newNotes, id);
 
     if (newBankId) {
-      createCashBankEntry(
+      await createCashBankEntry(
         newBankId, 'EXPENSE', id, 'expense',
         0, newAmt,
         `Expense ${existing.expense_no} — ${newCat}${newDesc ? ': ' + newDesc : ''}`,
@@ -100,7 +100,7 @@ exports.update = (req, res) => {
       );
     }
 
-    const row = db.prepare(
+    const row = await db.prepare(
       `SELECT e.*, ba.account_name FROM expenses e LEFT JOIN bank_accounts ba ON e.bank_account_id = ba.id WHERE e.id = ?`
     ).get(id);
     res.json(row);
@@ -109,14 +109,14 @@ exports.update = (req, res) => {
   }
 };
 
-exports.delete = (req, res) => {
+exports.delete = async (req, res) => {
   try {
     const { id } = req.params;
-    const row = db.prepare('SELECT * FROM expenses WHERE id = ?').get(id);
+    const row = await db.prepare('SELECT * FROM expenses WHERE id = ?').get(id);
     if (!row) return res.status(404).json({ error: 'Expense not found' });
 
     if (row.bank_account_id) {
-      createCashBankEntry(
+      await createCashBankEntry(
         row.bank_account_id, 'REVERSAL', id, 'expense',
         row.amount, 0,
         `Reversal of ${row.expense_no}`,
@@ -124,7 +124,7 @@ exports.delete = (req, res) => {
       );
     }
 
-    db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+    await db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

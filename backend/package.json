@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "migrate-to-mysql": "node migrate-to-mysql.js",
     "build-frontend": "cd ../frontend && npm install --include=dev && npm run build && rm -rf ../backend/src/public && cp -r ../public ../backend/src/public"
   },
   "engines": {
@@ -19,6 +20,7 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.0",
+    "mysql2": "^3.11.0",
     "sql.js": "^1.12.0"
   },
   "devDependencies": {
