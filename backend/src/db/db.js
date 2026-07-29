@@ -197,9 +197,7 @@ class DbWrapper {
 
   _rewrite(sql, params) {
     if (this.tenantId == null) return { sql, params };
-    const out = rewriteForTenant(sql, params, this.tenantId);
-    if (process.env.DEBUG_SQL) console.error('[DEBUG]', JSON.stringify(out.sql), JSON.stringify(out.params));
-    return out;
+    return rewriteForTenant(sql, params, this.tenantId);
   }
 
   prepare(sql) {
