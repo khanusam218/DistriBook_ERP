@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { getCompanyInfo } from '../utils/companyInfo'
@@ -11,12 +12,18 @@ const fmt = (n) => Number(n || 0).toFixed(2)
 
 // ── Shared print CSS (injected once when receipt is visible) ──────────────────
 
+// #pos-receipt is rendered via a portal directly under <body> (see PrintPortal
+// below) — never nested inside the modal's own scrollable/clipped container.
+// That container's overflow:auto + maxHeight was clipping the printed output
+// to whatever fit in the on-screen scroll viewport, no matter what CSS
+// position #pos-receipt itself used — the portal sidesteps that entirely.
 const PRINT_CSS = `
   @media print {
     body * { visibility: hidden !important; }
     #pos-receipt, #pos-receipt * { visibility: visible !important; }
     #pos-receipt {
-      position: fixed !important; top: 0 !important; left: 0 !important;
+      display: block !important;
+      position: absolute !important; top: 0 !important; left: 0 !important;
       width: 80mm !important; padding: 4mm !important; margin: 0 !important;
       background: #fff !important; color: #000 !important;
       font-family: 'Courier New', Courier, monospace !important;
@@ -41,7 +48,7 @@ function ReceiptContent({ bill, items }) {
   const storePhone = co.phone || co.mobile || ''
 
   return (
-    <div id="pos-receipt" className="font-mono text-sm font-bold bg-white text-black leading-relaxed">
+    <div className="font-mono text-sm font-bold bg-white text-black leading-relaxed">
       <div className="text-center mb-1">
         <div className="font-bold text-lg">{storeName}</div>
         {storeAddr && <div className="text-sm font-bold text-black">{storeAddr}</div>}
@@ -111,8 +118,24 @@ function ReceiptContent({ bill, items }) {
       </div>
       <div className="border-b border-dashed border-gray-400 my-1" />
       <div className="text-center text-sm font-bold text-black">Thank you! Visit again.</div>
-      <div className="text-center text-xs font-bold text-black mt-1">Build by evotrade.io | Taxaccountant.pk</div>
+      <div className="text-center text-xs font-bold text-black mt-1">Developed by evotrade.io | Taxaccountant.pk</div>
+      <div className="text-center text-xs font-bold text-black">03395050983</div>
     </div>
+  )
+}
+
+// Renders a hidden copy of the receipt directly under <body>, outside the
+// modal's DOM tree entirely — revealed only by @media print (see PRINT_CSS).
+// This is what actually fixes printing being cut short: the modal's own
+// scroll container was clipping the visible/printed area regardless of what
+// CSS position the receipt itself used, since that container is still an
+// ancestor either way. A portal has no such ancestor.
+function PrintPortal({ bill, items }) {
+  return createPortal(
+    <div id="pos-receipt" style={{ display: 'none' }}>
+      <ReceiptContent bill={bill} items={items} />
+    </div>,
+    document.body
   )
 }
 
@@ -135,6 +158,7 @@ function Receipt({ bill, items, onNewSale }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
           <ReceiptContent bill={bill} items={items} />
         </div>
+        <PrintPortal bill={bill} items={items} />
         <div className="modal-footer">
           <button onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}>Print Receipt</button>
           <button onClick={onNewSale} className="btn btn-success" style={{ flex: 1 }}>+ New Sale</button>
@@ -187,6 +211,7 @@ function BillHistory({ onClose }) {
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
             <ReceiptContent bill={selectedBill} items={billItems} />
           </div>
+          <PrintPortal bill={selectedBill} items={billItems} />
           <div className="modal-footer">
             <button onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}>Print Receipt</button>
             <button onClick={() => setSelectedBill(null)} className="btn btn-secondary" style={{ flex: 1 }}>← Back</button>
