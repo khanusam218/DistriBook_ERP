@@ -20,8 +20,9 @@ const PRINT_CSS = `
       width: 80mm !important; padding: 4mm !important; margin: 0 !important;
       background: #fff !important; color: #000 !important;
       font-family: 'Courier New', Courier, monospace !important;
-      font-size: 8.5pt !important; line-height: 1.45 !important;
+      font-size: 10.5pt !important; line-height: 1.45 !important; font-weight: 700 !important;
     }
+    #pos-receipt * { color: #000 !important; font-weight: 700 !important; }
     @page { size: 80mm auto; margin: 0; }
   }
 `
@@ -40,25 +41,25 @@ function ReceiptContent({ bill, items }) {
   const storePhone = co.phone || co.mobile || ''
 
   return (
-    <div id="pos-receipt" className="font-mono text-xs bg-white text-black leading-relaxed">
+    <div id="pos-receipt" className="font-mono text-sm font-bold bg-white text-black leading-relaxed">
       <div className="text-center mb-1">
-        <div className="font-bold text-sm">{storeName}</div>
-        {storeAddr && <div className="text-xs text-gray-600">{storeAddr}</div>}
-        {storePhone && <div className="text-xs text-gray-600">{storePhone}</div>}
+        <div className="font-bold text-lg">{storeName}</div>
+        {storeAddr && <div className="text-sm font-bold text-black">{storeAddr}</div>}
+        {storePhone && <div className="text-sm font-bold text-black">{storePhone}</div>}
         <div className="border-b border-dashed border-gray-400 my-1" />
       </div>
-      <div className="flex justify-between text-xs mb-0.5">
+      <div className="flex justify-between text-sm font-bold mb-0.5">
         <span>Bill#: <b>{bill.bill_no}</b></span>
         <span>{dateStr}</span>
       </div>
-      <div className="flex justify-between text-xs mb-0.5">
+      <div className="flex justify-between text-sm font-bold mb-0.5">
         <span>Time: {timeStr}</span>
         <span className="capitalize">{(bill.payment_method || 'CASH').toLowerCase()}</span>
       </div>
-      <div className="text-xs mb-1">Customer: {custLabel}</div>
+      <div className="text-sm font-bold mb-1">Customer: {custLabel}</div>
       <div className="border-b border-dashed border-gray-400 mb-1" />
-      <div className="text-xs">
-        <div className="flex justify-between font-semibold mb-0.5 border-b border-gray-300 pb-0.5">
+      <div className="text-sm font-bold">
+        <div className="flex justify-between font-bold mb-0.5 border-b border-gray-300 pb-0.5">
           <span className="flex-1">Item</span>
           <span className="w-8 text-right">Qty</span>
           <span className="w-14 text-right">Rate</span>
@@ -66,21 +67,21 @@ function ReceiptContent({ bill, items }) {
         </div>
         {items.map((item, i) => (
           <div key={i} className="mb-0.5">
-            <div className="text-gray-600 leading-tight truncate">{item.product_name}</div>
+            <div className="text-black font-bold leading-tight truncate">{item.product_name}</div>
             <div className="flex justify-between">
-              <span className="flex-1 text-gray-400 text-xs">{item.company_name}</span>
+              <span className="flex-1 text-black font-bold text-sm">{item.company_name}</span>
               <span className="w-8 text-right">{item.product_qty}</span>
               <span className="w-14 text-right">{fmt(item.product_rate)}</span>
               <span className="w-14 text-right">{fmt(item.total)}</span>
             </div>
             {Number(item.discount) > 0 && (
-              <div className="text-right text-gray-500 text-xs">Disc: -{fmt(item.discount)}</div>
+              <div className="text-right text-black font-bold text-sm">Disc: -{fmt(item.discount)}</div>
             )}
           </div>
         ))}
       </div>
       <div className="border-b border-dashed border-gray-400 my-1" />
-      <div className="text-xs space-y-0.5">
+      <div className="text-sm font-bold space-y-0.5">
         {Number(bill.discount_total) > 0 && (
           <>
             <div className="flex justify-between">
@@ -93,7 +94,7 @@ function ReceiptContent({ bill, items }) {
             </div>
           </>
         )}
-        <div className="flex justify-between font-bold text-sm border-t border-gray-300 pt-0.5 mt-0.5">
+        <div className="flex justify-between font-bold text-base border-t border-gray-300 pt-0.5 mt-0.5">
           <span>TOTAL</span>
           <span>Rs. {fmt(bill.total_amount)}</span>
         </div>
@@ -102,14 +103,15 @@ function ReceiptContent({ bill, items }) {
           <span>Rs. {fmt(bill.amount_paid)}</span>
         </div>
         {Number(bill.change_amount) > 0 && (
-          <div className="flex justify-between font-semibold">
+          <div className="flex justify-between font-bold">
             <span>Change</span>
             <span>Rs. {fmt(bill.change_amount)}</span>
           </div>
         )}
       </div>
       <div className="border-b border-dashed border-gray-400 my-1" />
-      <div className="text-center text-xs text-gray-500">Thank you! Visit again.</div>
+      <div className="text-center text-sm font-bold text-black">Thank you! Visit again.</div>
+      <div className="text-center text-xs font-bold text-black mt-1">Build by evotrade.io | Taxaccountant.pk</div>
     </div>
   )
 }
