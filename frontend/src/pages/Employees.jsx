@@ -4,6 +4,7 @@ import { toast } from '../components/Toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { isValidPhone } from '../utils/validation'
+import { DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 
 const ROLES = ['Delivery Man', 'Sales Man', 'Accountant', 'Manager', 'Supervisor', 'Other']
 const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
@@ -436,6 +437,7 @@ function LedgerView({ employeeId, onBack }) {
       <td style="text-align:right;color:${filteredBalance>0?'#dc2626':'#2563eb'}">Rs. ${Math.abs(filteredBalance).toLocaleString('en-PK',{minimumFractionDigits:2})} ${filteredBalance>0?'Dr':filteredBalance<0?'Cr':''}</td>
     </tr></tfoot></table>
     <div style="margin-top:20px;font-size:9pt;color:#94a3b8">Printed on ${new Date().toLocaleDateString()}</div>
+    <div style="margin-top:4px;font-size:9pt;font-weight:bold;color:#64748b">${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}</div>
     </body></html>`)
     w.document.close()
     w.focus()
@@ -483,6 +485,11 @@ function LedgerView({ employeeId, onBack }) {
       },
     })
 
+    for (let i = 1; i <= doc.getNumberOfPages(); i++) {
+      doc.setPage(i)
+      doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(100)
+      doc.text(`${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}`, 148.5, 205, { align: 'center' })
+    }
     doc.save(`ledger-${employee.name.replace(/\s+/g,'-')}-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 

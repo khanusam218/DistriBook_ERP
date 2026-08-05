@@ -3,6 +3,7 @@ import api from '../api'
 import { toast } from '../components/Toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 import {
   PageHeader, Card, StatCard, Select, Input, NumInput, Btn, Badge, Alert, Empty, Spinner, Table, Modal, SectionLabel, FormGrid
 } from '../components/ui'
@@ -142,6 +143,7 @@ export default function CashBank() {
       <td style="text-align:right;color:#059669">Rs. ${Number(acc.balance).toLocaleString('en-PK',{minimumFractionDigits:2})}</td>
     </tr></tfoot></table>
     <div style="margin-top:16px;font-size:9pt;color:#94a3b8">Printed on ${new Date().toLocaleDateString()}</div>
+    <div style="margin-top:4px;font-size:9pt;font-weight:bold;color:#64748b">${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}</div>
     </body></html>`)
     w.document.close(); w.focus(); setTimeout(() => { w.print(); w.close() }, 400)
   }
@@ -182,6 +184,12 @@ export default function CashBank() {
         }
       },
     })
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(100)
+      doc.text(`${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}`, 148.5, 205, { align: 'center' })
+    }
     doc.save(`ledger-${acc.account_name.replace(/\s+/g,'-')}-${new Date().toISOString().split('T')[0]}.pdf`)
   }
 

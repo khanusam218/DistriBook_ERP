@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
 import { toast } from '../components/Toast'
-import { getCompanyInfo } from '../utils/companyInfo'
+import { getCompanyInfo, DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 import { h } from '../utils/exportUtils'
 import { isValidPhone } from '../utils/validation'
 import AddCustomerModal from '../components/AddCustomerModal'
@@ -83,6 +83,7 @@ function printDO(gp, billGroups, _unused, small = false) {
       </table>
       <p style="margin-top:${small ? '8px' : '14px'};font-size:${small ? '9pt' : '11pt'}">Net Payable: <strong>Rs. ${fmt(billNet)}</strong></p>
       <div style="margin-top:${small ? '18px' : '30px'}">Authorised Signature: _______________________</div>
+      <div style="margin-top:16px;font-size:8pt;font-weight:bold;color:#64748b;text-align:center">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
     </div>`
   }).join('')
 
@@ -207,6 +208,7 @@ ${companyHeaderHTML(co)}
   <td style="border:1px solid #000;padding:5px 8px"></td>
   <td style="border:1px solid #000;padding:5px 8px;text-align:right;font-weight:bold">Rs.${fmt(totalAmt)}</td>
 </tr></tfoot></table>
+<div style="margin-top:20px;font-size:9pt;font-weight:bold;color:#64748b;text-align:center">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
 </div></body></html>`)
   w.document.close()
   setTimeout(() => { w.focus(); w.print() }, 350)

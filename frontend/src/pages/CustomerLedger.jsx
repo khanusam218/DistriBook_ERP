@@ -9,6 +9,7 @@ import {
 import ErrorBoundary from '../components/ErrorBoundary'
 import PrintInvoice from '../components/InvoicePreview'
 import { toast } from '../components/Toast'
+import { DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 
 const fmt  = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
 const today = () => new Date().toISOString().split('T')[0]
@@ -179,6 +180,7 @@ export default function CustomerLedger() {
       <td style="text-align:right">Rs. ${fmt(Math.abs(balance))} ${balance >= 0 ? 'DR' : 'CR'}</td>
     </tr></tfoot></table>
     <div style="margin-top:16px;font-size:9pt;color:#94a3b8">Printed on ${new Date().toLocaleDateString()}</div>
+    <div style="margin-top:4px;font-size:9pt;font-weight:bold;color:#64748b">${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}</div>
     </body></html>`)
     w.document.close(); w.focus(); setTimeout(() => { w.print(); w.close() }, 400)
   }
@@ -213,6 +215,11 @@ export default function CustomerLedger() {
         }
       }
     })
+    for (let i = 1; i <= doc.getNumberOfPages(); i++) {
+      doc.setPage(i)
+      doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(100)
+      doc.text(`${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}`, 148.5, 205, { align: 'center' })
+    }
     doc.save(`ledger-${selectedCustomer?.customer_name?.replace(/\s+/g,'-')}-${today()}.pdf`)
   }
 
@@ -245,6 +252,11 @@ export default function CustomerLedger() {
         if (d.section==='body' && d.column.index===6 && d.cell.text[0]==='OVERDUE') d.cell.styles.textColor=[220,38,38]
       }
     })
+    for (let i = 1; i <= doc.getNumberOfPages(); i++) {
+      doc.setPage(i)
+      doc.setFontSize(7); doc.setFont(undefined, 'normal'); doc.setTextColor(100)
+      doc.text(`${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}`, 105, 290, { align: 'center' })
+    }
     doc.save(`all-customer-balances-${today()}.pdf`)
   }
 
@@ -278,6 +290,7 @@ export default function CustomerLedger() {
     <tfoot><tr><td colspan="4" style="text-align:right">Total Receivable</td><td style="text-align:right;color:#dc2626">Rs. ${fmt(totalReceivable)}</td><td colspan="2"></td></tr></tfoot>
     </table>
     <div style="margin-top:16px;font-size:9pt;color:#94a3b8">Printed on ${new Date().toLocaleDateString()}</div>
+    <div style="margin-top:4px;font-size:9pt;font-weight:bold;color:#64748b">${DEVELOPER_CREDIT_LINE1} | ${DEVELOPER_CREDIT_LINE2}</div>
     </body></html>`)
     w.document.close(); w.focus(); setTimeout(() => { w.print(); w.close() }, 400)
   }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import { exportPDF, exportExcel, printTable, ExportBar, h } from '../utils/exportUtils'
+import { DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 import {
   PageHeader, Card, StatCard, Select, Input, Btn, Badge, Alert, Empty, Spinner, Table, Modal
 } from '../components/ui'
@@ -52,6 +53,7 @@ function PurchaseDetailModal({ purchaseId, onClose }) {
       ).join('')}</tbody>
     </table>
     <p class="total">Grand Total: Rs. ${Number(detail?.total_amount || 0).toFixed(2)}</p>
+    <p style="text-align:center;font-size:10px;font-weight:bold;color:#64748b;margin-top:20px">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</p>
     </body></html>`)
     w.document.close(); w.focus(); w.print(); w.close()
   }

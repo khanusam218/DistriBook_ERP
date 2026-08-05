@@ -2,7 +2,7 @@ import React from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { getCompanyInfo } from './companyInfo'
+import { getCompanyInfo, DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from './companyInfo'
 
 export function h(str) {
   return String(str ?? '')
@@ -87,6 +87,8 @@ export function exportPDF(title, columns, rows, filename, meta) {
     doc.setTextColor(120)
     doc.text(`Page ${i} of ${pageCount}`, 283, 205, { align: 'right' })
     doc.text(name, 14, 205)
+    doc.setFontSize(7)
+    doc.text(`${DEVELOPER_CREDIT_LINE1}  |  ${DEVELOPER_CREDIT_LINE2}`, 148.5, 205, { align: 'center' })
   }
 
   doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`)
@@ -107,6 +109,8 @@ export function exportExcel(title, columns, rows, filename) {
     [],
     header,
     ...data,
+    [],
+    [`${DEVELOPER_CREDIT_LINE1}  |  ${DEVELOPER_CREDIT_LINE2}`],
   ])
 
   ws['!cols'] = columns.map(() => ({ wch: 20 }))
@@ -146,6 +150,7 @@ export function printTable(title, columns, rows, meta) {
       td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
       tr:nth-child(even) td { background: #f5f7fa; }
       .footer { margin-top: 20px; font-size: 9px; color: #aaa; text-align: center; }
+      .dev-credit { margin-top: 6px; font-size: 9px; font-weight: bold; color: #64748b; text-align: center; }
       @media print { button { display: none; } }
     </style></head>
     <body>
@@ -163,6 +168,7 @@ export function printTable(title, columns, rows, meta) {
         <tbody>${rowsHtml}</tbody>
       </table>
       <div class="footer">${h(name)}</div>
+      <div class="dev-credit">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
     </body></html>`
 
   const w = window.open('', '_blank')

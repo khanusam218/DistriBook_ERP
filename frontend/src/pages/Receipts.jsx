@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api'
 import { toast } from '../components/Toast'
-import { getCompanyInfo } from '../utils/companyInfo'
+import { getCompanyInfo, DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 import { h } from '../utils/exportUtils'
 import { Btn, Input, Select, Card, Alert, Empty, Table, PageHeader, SectionLabel, Icon, Spinner, Badge } from '../components/ui'
 
@@ -47,6 +47,7 @@ function printReceipt(r) {
     <div class="line"></div>
     <div class="footer">Thank you for your payment</div>
     <div class="center sig">Authorised Signature ___________________</div>
+    <div class="center" style="font-size:10px;font-weight:bold;color:#64748b;margin-top:14px">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
     </body></html>`)
   w.document.close()
   setTimeout(() => { w.focus(); w.print() }, 300)

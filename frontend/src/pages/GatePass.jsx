@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import api from '../api'
 import { toast } from '../components/Toast'
 import { ExportBar, exportPDF, exportExcel, printTable, h } from '../utils/exportUtils'
+import { DEVELOPER_CREDIT_LINE1, DEVELOPER_CREDIT_LINE2 } from '../utils/companyInfo'
 
 const todayStr = () => new Date().toISOString().split('T')[0]
 const fmt = n => Number(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2 })
@@ -65,6 +66,7 @@ function printGpReport(gp, items, companyName) {
   <td style="border:1px solid #000;padding:5px 8px;text-align:right;font-weight:bold">${totalQty}</td>
   <td style="border:1px solid #000;padding:5px 8px;text-align:right;font-weight:bold">Rs. ${fmt(totalAmt)}</td>
 </tr></tfoot></table>
+<div style="margin-top:20px;font-size:9pt;font-weight:bold;color:#64748b;text-align:center">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
 </div></body></html>`)
   w.document.close()
   setTimeout(() => { w.focus(); w.print() }, 300)
@@ -119,6 +121,7 @@ function printBillDO(gp, shops, companyName) {
 </tr></tfoot></table>
 <p style="margin-top:14px;font-size:13pt">Grand Total: <strong>Rs. ${fmt(shopNet)}</strong></p>
 <div style="margin-top:28px;font-size:13pt">Authorised Signature: _______________________</div>
+<div style="margin-top:20px;font-size:9pt;font-weight:bold;color:#64748b;text-align:center">${h(DEVELOPER_CREDIT_LINE1)} | ${h(DEVELOPER_CREDIT_LINE2)}</div>
 </div>`
   })
   const w = window.open('', '_blank')
