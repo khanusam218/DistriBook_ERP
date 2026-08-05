@@ -385,9 +385,9 @@ export default function Sales() {
                     <tr>
                       <th>Product</th>
                       {opts.description && <th style={{ width: 120 }}>Description</th>}
-                      <th style={{ width: 110 }}>Rate / CTN</th>
                       <th style={{ width: 80 }}>CTN</th>
                       <th style={{ width: 80 }}>Pieces</th>
+                      <th style={{ width: 110 }}>Rate / CTN</th>
                       {opts.discount && <th style={{ width: 80 }}>Disc %</th>}
                       <th style={{ width: 130, background: '#f8fafc' }}>Amount</th>
                       <th style={{ width: 44 }}></th>
@@ -445,18 +445,6 @@ export default function Sales() {
                             <input
                               type="number" onWheel={e => e.target.blur()}
                               min="0"
-                              step="any"
-                              className="db-input"
-                              value={item.productRate && item.piecesPerCtn ? +(Number(item.productRate) * Number(item.piecesPerCtn)).toFixed(4) : (item.productRate || '')}
-                              onChange={e => updateItem(idx, 'productRate', Number(item.piecesPerCtn) > 0 ? Number(e.target.value) / Number(item.piecesPerCtn) : e.target.value)}
-                              placeholder="0"
-                              style={{ fontSize: 12 }}
-                            />
-                          </td>
-                          <td style={{ padding: '8px 6px' }}>
-                            <input
-                              type="number" onWheel={e => e.target.blur()}
-                              min="0"
                               className="db-input"
                               value={item.qtyCtn || ''}
                               onChange={e => updateItem(idx, 'qtyCtn', e.target.value)}
@@ -471,6 +459,18 @@ export default function Sales() {
                               className="db-input"
                               value={item.qtyPieces || ''}
                               onChange={e => updateItem(idx, 'qtyPieces', e.target.value)}
+                              placeholder="0"
+                              style={{ fontSize: 12 }}
+                            />
+                          </td>
+                          <td style={{ padding: '8px 6px' }}>
+                            <input
+                              type="number" onWheel={e => e.target.blur()}
+                              min="0"
+                              step="any"
+                              className="db-input"
+                              value={item.productRate && item.piecesPerCtn ? +(Number(item.productRate) * Number(item.piecesPerCtn)).toFixed(4) : (item.productRate || '')}
+                              onChange={e => updateItem(idx, 'productRate', Number(item.piecesPerCtn) > 0 ? Number(e.target.value) / Number(item.piecesPerCtn) : e.target.value)}
                               placeholder="0"
                               style={{ fontSize: 12 }}
                             />
