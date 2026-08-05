@@ -34,6 +34,21 @@ exports.create = async (req, res) => {
     if (piecesPerCtn != null && Number(piecesPerCtn) < 1) {
       return res.status(400).json({ error: 'Pieces per carton must be at least 1' });
     }
+    const existing = await db.prepare(
+      'SELECT * FROM stocks WHERE company_name = ? AND product_name = ?'
+    ).get(companyName, productName);
+
+    if (existing) {
+      // Stock for this company+product already exists — add to it instead of
+      // creating a duplicate row (mirrors how receiving stock via a purchase
+      // invoice merges into the existing row).
+      await db.prepare(
+        'UPDATE stocks SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).run(quantity || 0, existing.id);
+      const row = await db.prepare('SELECT * FROM stocks WHERE id = ?').get(existing.id);
+      return res.status(200).json(row);
+    }
+
     const result = await db.prepare(
       `INSERT INTO stocks (company_name, product_name, product_description, packing_unit, pieces_per_ctn, purchase_price, sale_price, quantity, barcode)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
