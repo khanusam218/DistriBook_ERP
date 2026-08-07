@@ -253,7 +253,7 @@ function BillHistory({ onClose }) {
                     <td style={{ color: '#64748b' }}>{b.sale_date}</td>
                     <td>{b.customer_name || b.customer_shop || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Walk-in</span>}</td>
                     <td style={{ fontWeight: 700 }}>Rs. {fmt(b.total_amount)}</td>
-                    <td><span className={`badge ${b.payment_method === 'CASH' ? 'badge-green' : 'badge-blue'}`}>{b.payment_method || 'CASH'}</span></td>
+                    <td><span className={`badge ${b.payment_method === 'CASH' ? 'badge-green' : b.payment_method === 'OTHER' ? 'badge-purple' : 'badge-blue'}`}>{b.payment_method || 'CASH'}</span></td>
                     <td style={{ color: '#4f46e5', fontSize: 12 }}>View →</td>
                   </tr>
                 ))}
@@ -762,7 +762,7 @@ export default function POS() {
             <div style={{ display: 'flex', gap: 6 }}>
               {bankAccounts.map(acc => (
                 <button key={acc.id}
-                  onClick={() => { setBankAccountId(String(acc.id)); setPaymentMethod(acc.account_type === 'CASH' ? 'CASH' : 'BANK') }}
+                  onClick={() => { setBankAccountId(String(acc.id)); setPaymentMethod(acc.account_type) }}
                   style={{ flex: 1, padding: '6px 4px', borderRadius: 8, fontSize: 11.5, fontWeight: 600, border: '1.5px solid', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.1s',
                     background: bankAccountId === String(acc.id) ? '#4f46e5' : '#fff', color: bankAccountId === String(acc.id) ? '#fff' : '#475569', borderColor: bankAccountId === String(acc.id) ? '#4f46e5' : '#e2e8f0' }}>
                   {acc.account_name}

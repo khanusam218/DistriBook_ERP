@@ -110,6 +110,7 @@ export default function CashBank() {
 
   const cashTotal = accounts.filter(a => a.account_type === 'CASH').reduce((s, a) => s + (a.balance || 0), 0)
   const bankTotal = accounts.filter(a => a.account_type === 'BANK').reduce((s, a) => s + (a.balance || 0), 0)
+  const otherTotal = accounts.filter(a => a.account_type === 'OTHER').reduce((s, a) => s + (a.balance || 0), 0)
 
   const handlePrintLedger = (acc, txns) => {
     const co = (() => { try { return JSON.parse(localStorage.getItem('companyInfo') || '{}').name || 'DistriBook ERP' } catch { return 'DistriBook ERP' } })()
@@ -207,7 +208,7 @@ export default function CashBank() {
         }
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
         <StatCard
           label="Total Cash in Hand"
           value={`Rs. ${fmt(cashTotal)}`}
@@ -217,6 +218,11 @@ export default function CashBank() {
           label="Total Bank Balance"
           value={`Rs. ${fmt(bankTotal)}`}
           accent="#3b82f6"
+        />
+        <StatCard
+          label="Total Other Transfer"
+          value={`Rs. ${fmt(otherTotal)}`}
+          accent="#8b5cf6"
         />
       </div>
 
@@ -252,8 +258,8 @@ export default function CashBank() {
                       </div>
                     )}
                   </div>
-                  <Badge color={acc.account_type === 'CASH' ? 'green' : 'blue'}>
-                    {acc.account_type}
+                  <Badge color={acc.account_type === 'CASH' ? 'green' : acc.account_type === 'OTHER' ? 'purple' : 'blue'}>
+                    {acc.account_type === 'OTHER' ? 'OTHER TRANSFER' : acc.account_type}
                   </Badge>
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Rs. {fmt(acc.balance)}</div>
@@ -412,21 +418,22 @@ export default function CashBank() {
           >
             <option value="CASH">Cash</option>
             <option value="BANK">Bank</option>
+            <option value="OTHER">Other Transfer</option>
           </Select>
 
-          {form.account_type === 'BANK' && (
+          {(form.account_type === 'BANK' || form.account_type === 'OTHER') && (
             <>
               <Input
-                label="Bank Name"
+                label={form.account_type === 'OTHER' ? 'Service Name' : 'Bank Name'}
                 value={form.bank_name}
                 onChange={e => setForm(f => ({ ...f, bank_name: e.target.value }))}
-                placeholder="HBL, UBL, MCB…"
+                placeholder={form.account_type === 'OTHER' ? 'JazzCash, Easypaisa, SadaPay…' : 'HBL, UBL, MCB…'}
               />
               <Input
-                label="Account Number"
+                label={form.account_type === 'OTHER' ? 'Account / Wallet Number' : 'Account Number'}
                 value={form.account_number}
                 onChange={e => setForm(f => ({ ...f, account_number: e.target.value }))}
-                placeholder="Account number"
+                placeholder={form.account_type === 'OTHER' ? 'Wallet or account number' : 'Account number'}
               />
             </>
           )}
