@@ -879,8 +879,14 @@ exports.reopenGatePass = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
+    const { id } = req.params;
+    const existing = await db.prepare('SELECT status FROM gate_passes WHERE id = ?').get(id);
+    if (!existing) return res.status(404).json({ error: 'Gate pass not found' });
+    if (existing.status !== 'CLOSED') {
+      return res.status(400).json({ error: 'Only closed gate passes can be deleted. Close this gate pass first.' });
+    }
+
     await db.transaction(async () => {
-      const { id } = req.params;
       const gp = await db.prepare('SELECT * FROM gate_passes WHERE id = ?').get(id);
       if (!gp) throw new Error('Gate pass not found');
 

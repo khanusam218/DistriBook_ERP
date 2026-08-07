@@ -34,20 +34,15 @@ function printDO(gp, billGroups, _unused, small = false) {
 
   const pages = billGroups.map((bill, idx) => {
     const billAmt  = bill.lines.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0)
-    const billDisc = bill.lines.reduce((s, l) => s + (parseFloat(l.discount) || 0), 0)
     const billNet  = bill.lines.reduce((s, l) => s + (l.net != null ? parseFloat(l.net) : (parseFloat(l.amount) - parseFloat(l.discount)) || 0), 0)
     const rows = bill.lines.map((item, i) => {
-      const net = item.net != null ? parseFloat(item.net) : (parseFloat(item.amount) - parseFloat(item.discount))
       return `<tr>
         <td style="border:1px solid #000;padding:${cellPad}">${i + 1}</td>
         <td style="border:1px solid #000;padding:${cellPad}">${h(item.item_description || '')}</td>
-        <td style="border:1px solid #000;padding:${cellPad}">${h(item.brand || '')}</td>
         <td style="border:1px solid #000;padding:${cellPad};text-align:right">${item.qty_ctn}</td>
         <td style="border:1px solid #000;padding:${cellPad};text-align:right">${item.qty_pieces || 0}</td>
         <td style="border:1px solid #000;padding:${cellPad};text-align:right">${fmt(item.rate)}</td>
         <td style="border:1px solid #000;padding:${cellPad};text-align:right">${fmt(item.amount)}</td>
-        <td style="border:1px solid #000;padding:${cellPad};text-align:right">${fmt(item.discount)}</td>
-        <td style="border:1px solid #000;padding:${cellPad};text-align:right;font-weight:bold">${fmt(net)}</td>
       </tr>`
     }).join('')
     const co = getCompanyInfo()
@@ -65,20 +60,15 @@ function printDO(gp, billGroups, _unused, small = false) {
         <thead><tr style="background:#f0f0f0">
           <th style="border:1px solid #000;padding:${cellPad};width:28px">Sr</th>
           <th style="border:1px solid #000;padding:${cellPad};text-align:left">Item Description</th>
-          <th style="border:1px solid #000;padding:${cellPad};width:65px">Brand</th>
           <th style="border:1px solid #000;padding:${cellPad};width:38px;text-align:right">CTN</th>
           <th style="border:1px solid #000;padding:${cellPad};width:35px;text-align:right">Pcs</th>
           <th style="border:1px solid #000;padding:${cellPad};width:70px;text-align:right">Rate</th>
           <th style="border:1px solid #000;padding:${cellPad};width:75px;text-align:right">Amount</th>
-          <th style="border:1px solid #000;padding:${cellPad};width:60px;text-align:right">Disc</th>
-          <th style="border:1px solid #000;padding:${cellPad};width:80px;text-align:right">Net</th>
         </tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr>
-          <td colspan="6" style="border:1px solid #000;padding:${cellPad};font-weight:bold;text-align:right">Totals</td>
+          <td colspan="5" style="border:1px solid #000;padding:${cellPad};font-weight:bold;text-align:right">Totals</td>
           <td style="border:1px solid #000;padding:${cellPad};text-align:right;font-weight:bold">${fmt(billAmt)}</td>
-          <td style="border:1px solid #000;padding:${cellPad};text-align:right;font-weight:bold">${fmt(billDisc)}</td>
-          <td style="border:1px solid #000;padding:${cellPad};text-align:right;font-weight:bold">${fmt(billNet)}</td>
         </tr></tfoot>
       </table>
       <p style="margin-top:${small ? '8px' : '14px'};font-size:${small ? '9pt' : '11pt'}">Net Payable: <strong>Rs. ${fmt(billNet)}</strong></p>
@@ -137,7 +127,7 @@ function printGPFromLines(gp, allLines, _unused, returns = []) {
   })
 
   let lastBrand = null, sr = 1
-  const totalCols = hasReturns ? 8 : 7
+  const totalCols = hasReturns ? 7 : 6
   const rows = items.map(item => {
     let hdr = ''
     if (item.brand !== lastBrand) {
@@ -149,7 +139,6 @@ function printGPFromLines(gp, allLines, _unused, returns = []) {
       : ''
     return `${hdr}<tr>
       <td style="border:1px solid #000;padding:5px 8px">${sr++}</td>
-      <td style="border:1px solid #000;padding:5px 8px">${h(item.item_code || '')}</td>
       <td style="border:1px solid #000;padding:5px 8px">${h(item.item_description)}</td>
       <td style="border:1px solid #000;padding:5px 8px;text-align:right">${item.qty_ctn}</td>
       <td style="border:1px solid #000;padding:5px 8px;text-align:right">${item.qty_pcs || 0}</td>
@@ -191,7 +180,6 @@ ${companyHeaderHTML(co)}
 <table style="width:100%;border-collapse:collapse;font-size:13pt">
 <thead><tr style="background:#f0f0f0">
   <th style="border:1px solid #000;padding:6px 8px;text-align:left;width:38px">Sr #</th>
-  <th style="border:1px solid #000;padding:6px 8px;text-align:left;width:120px">Item Code</th>
   <th style="border:1px solid #000;padding:6px 8px;text-align:left">Item Description</th>
   <th style="border:1px solid #000;padding:6px 8px;text-align:right;width:58px">CTN</th>
   <th style="border:1px solid #000;padding:6px 8px;text-align:right;width:58px">Pcs</th>
@@ -201,7 +189,7 @@ ${companyHeaderHTML(co)}
 </tr></thead>
 <tbody>${rows}</tbody>
 <tfoot><tr>
-  <td colspan="3" style="border:1px solid #000;padding:5px 8px;font-weight:bold">Total</td>
+  <td colspan="2" style="border:1px solid #000;padding:5px 8px;font-weight:bold">Total</td>
   <td style="border:1px solid #000;padding:5px 8px;text-align:right;font-weight:bold">${totalIssuedCtn}</td>
   <td style="border:1px solid #000;padding:5px 8px;text-align:right;font-weight:bold">${totalIssuedPcs}</td>
   ${retTotalCell}
@@ -2396,7 +2384,11 @@ export default function OGP() {
                       <td>
                         <div style={{display:'flex',gap:10}}>
                         <button onClick={() => setEditId(gp.id)} className="btn btn-ghost btn-sm" style={{color:'#4f46e5'}}>Edit</button>
-                        <button onClick={() => setDeleteId(gp.id)} className="btn btn-ghost btn-sm" style={{color:'#ef4444'}}>Delete</button>
+                        {gp.status === 'CLOSED' ? (
+                          <button onClick={() => setDeleteId(gp.id)} className="btn btn-ghost btn-sm" style={{color:'#ef4444'}}>Delete</button>
+                        ) : (
+                          <button disabled title="Only closed gate passes can be deleted" className="btn btn-ghost btn-sm" style={{color:'#cbd5e1',cursor:'not-allowed'}}>Delete</button>
+                        )}
                       </div>
                     </td>
                   </tr>
