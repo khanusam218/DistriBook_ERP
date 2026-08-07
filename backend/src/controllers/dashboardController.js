@@ -2,26 +2,30 @@ const db = require('../db/db');
 
 exports.getOverview = async (req, res) => {
   try {
+    // Date boundaries computed in JS (not DB-specific functions like MySQL's
+    // DATE_FORMAT/DATE_SUB/CURDATE, which don't exist in SQLite) so this query
+    // set works identically against either database engine.
     const now = new Date();
-    const thisMonth = now.toISOString().slice(0, 7);
-    const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+    const fmtDate = (d) => d.toISOString().slice(0, 10);
+    const thisMonthStart = fmtDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    const nextMonthStart = fmtDate(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+    const lastMonthStart = fmtDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
 
     // ── Monthly KPIs ──────────────────────────────────────────────────────────
     const thisMonthSales = await db.prepare(
       `SELECT COALESCE(SUM(total_amount),0) as total, COUNT(*) as count
-       FROM sales WHERE DATE_FORMAT(sale_date, '%Y-%m') = ?`
-    ).get(thisMonth);
+       FROM sales WHERE sale_date >= ? AND sale_date < ?`
+    ).get(thisMonthStart, nextMonthStart);
     const lastMonthSales = await db.prepare(
-      `SELECT COALESCE(SUM(total_amount),0) as total FROM sales WHERE DATE_FORMAT(sale_date, '%Y-%m') = ?`
-    ).get(lastMonth);
+      `SELECT COALESCE(SUM(total_amount),0) as total FROM sales WHERE sale_date >= ? AND sale_date < ?`
+    ).get(lastMonthStart, thisMonthStart);
     const thisMonthPurchases = await db.prepare(
       `SELECT COALESCE(SUM(total_amount),0) as total, COUNT(*) as count
-       FROM purchases WHERE DATE_FORMAT(purchase_date, '%Y-%m') = ?`
-    ).get(thisMonth);
+       FROM purchases WHERE purchase_date >= ? AND purchase_date < ?`
+    ).get(thisMonthStart, nextMonthStart);
     const lastMonthPurchases = await db.prepare(
-      `SELECT COALESCE(SUM(total_amount),0) as total FROM purchases WHERE DATE_FORMAT(purchase_date, '%Y-%m') = ?`
-    ).get(lastMonth);
+      `SELECT COALESCE(SUM(total_amount),0) as total FROM purchases WHERE purchase_date >= ? AND purchase_date < ?`
+    ).get(lastMonthStart, thisMonthStart);
 
     // ── All-time totals ──────────────────────────────────────────────────────
     const totalStocks    = (await db.prepare('SELECT COUNT(*) as c FROM stocks').get()).c;
@@ -64,16 +68,17 @@ exports.getOverview = async (req, res) => {
     const payablesCount = payablesRows.filter(r => r.bal > 0).length;
 
     // ── 30-day daily trend ────────────────────────────────────────────────────
+    const trendCutoff = fmtDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29));
     const salesTrendRaw = await db.prepare(`
       SELECT DATE(sale_date) as day, COALESCE(SUM(total_amount),0) as sales
-      FROM sales WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+      FROM sales WHERE sale_date >= ?
       GROUP BY day ORDER BY day
-    `).all();
+    `).all(trendCutoff);
     const purchaseTrendRaw = await db.prepare(`
       SELECT DATE(purchase_date) as day, COALESCE(SUM(total_amount),0) as purchases
-      FROM purchases WHERE purchase_date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+      FROM purchases WHERE purchase_date >= ?
       GROUP BY day ORDER BY day
-    `).all();
+    `).all(trendCutoff);
 
     // Build full 30-day array (zero-fill gaps)
     const trendMap = {};
@@ -122,6 +127,25 @@ exports.getOverview = async (req, res) => {
       FROM stocks WHERE quantity <= 10 ORDER BY quantity ASC LIMIT 10
     `).all();
 
+    // ── Stock value (for check & balance / stocktake reconciliation) ────────
+    const allStockRows = await db.prepare(
+      'SELECT company_name, product_name, quantity, purchase_price, sale_price, packing_unit FROM stocks'
+    ).all();
+    const totalStockQty = allStockRows.reduce((s, r) => s + Number(r.quantity || 0), 0);
+    const stockValueCost = allStockRows.reduce((s, r) => s + Number(r.quantity || 0) * Number(r.purchase_price || 0), 0);
+    const stockValueRetail = allStockRows.reduce((s, r) => s + Number(r.quantity || 0) * Number(r.sale_price || 0), 0);
+    const topStockByValue = allStockRows
+      .map(r => ({
+        company_name: r.company_name,
+        product_name: r.product_name,
+        quantity: r.quantity,
+        packing_unit: r.packing_unit,
+        value: Number(r.quantity || 0) * Number(r.purchase_price || 0),
+      }))
+      .filter(r => r.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+
     // ── Open gate passes ──────────────────────────────────────────────────────
     const openGatePasses = (await db.prepare(
       `SELECT COUNT(*) as c FROM gate_passes WHERE status = 'OPEN' OR status IS NULL`
@@ -159,6 +183,7 @@ exports.getOverview = async (req, res) => {
         payablesTotal, payablesCount,
         openGatePasses,
         lowStockCount: lowStock.length,
+        totalStockQty, stockValueCost, stockValueRetail,
       },
       cashBankAccounts,
       trend,
@@ -166,6 +191,7 @@ exports.getOverview = async (req, res) => {
       topCustomers,
       topVendors,
       lowStock,
+      topStockByValue,
       recentSales,
       recentPurchases,
     });

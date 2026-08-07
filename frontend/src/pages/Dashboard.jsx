@@ -154,6 +154,35 @@ export default function Dashboard() {
         </div>
       )}
 
+      <Card style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Stock Value</p>
+            <p style={{ fontSize: 11, color: '#cbd5e1', margin: '2px 0 0' }}>For stock-take check &amp; balance — value of everything currently in stock</p>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr) 1.4fr', gap: 14 }}>
+          <StatCard label="Total Quantity" value={Number(s.totalStockQty || 0).toLocaleString('en-PK')} sub="units across all items" accent="#0d9488" />
+          <StatCard label="Stock Value (Cost)" value={rsShort(s.stockValueCost)} sub="what you paid for it" accent="#3b82f6" />
+          <StatCard label="Stock Value (Retail)" value={rsShort(s.stockValueRetail)} sub="if sold at listed price" accent="#10b981" />
+          <Card style={{ padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>Top Value Items</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 92, overflowY: 'auto' }}>
+              {(data.topStockByValue || []).length === 0 ? (
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>No stock value yet</p>
+              ) : (data.topStockByValue || []).slice(0, 4).map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}>
+                  <span style={{ color: '#334155', maxWidth: '65%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.product_name} <span style={{ color: '#94a3b8' }}>({item.company_name})</span>
+                  </span>
+                  <span style={{ fontWeight: 700, color: '#3b82f6' }}>{rsShort(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </Card>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, marginBottom: 16 }}>
         <Card style={{ padding: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
