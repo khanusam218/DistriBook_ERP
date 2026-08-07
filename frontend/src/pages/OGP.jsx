@@ -56,10 +56,10 @@ function printDO(gp, billGroups, _unused, small = false) {
         <tr><td style="padding:2px 0">Delivery Man</td><td style="padding:2px 0">${h(gp.delivery_man || '')}</td>
             <td style="padding:2px 0">Area</td><td style="padding:2px 0">${h(gp.area || '')}</td></tr>
       </table>
-      <table style="width:100%;border-collapse:collapse">
+      <table style="border-collapse:collapse">
         <thead><tr style="background:#f0f0f0">
           <th style="border:1px solid #000;padding:${cellPad};width:28px">Sr</th>
-          <th style="border:1px solid #000;padding:${cellPad};text-align:left">Item Description</th>
+          <th style="border:1px solid #000;padding:${cellPad};width:${small ? '160px' : '220px'};text-align:left">Item Description</th>
           <th style="border:1px solid #000;padding:${cellPad};width:38px;text-align:right">CTN</th>
           <th style="border:1px solid #000;padding:${cellPad};width:35px;text-align:right">Pcs</th>
           <th style="border:1px solid #000;padding:${cellPad};width:70px;text-align:right">Rate</th>
@@ -177,10 +177,10 @@ ${companyHeaderHTML(co)}
 <tr><td style="padding:4px 0">Delivery Date</td><td>${h(gp.delivery_date || '')}</td>
     <td style="padding:4px 0">Area</td><td>${h(gp.area || '')}</td></tr>
 </tbody></table>
-<table style="width:100%;border-collapse:collapse;font-size:13pt">
+<table style="border-collapse:collapse;font-size:13pt">
 <thead><tr style="background:#f0f0f0">
   <th style="border:1px solid #000;padding:6px 8px;text-align:left;width:38px">Sr #</th>
-  <th style="border:1px solid #000;padding:6px 8px;text-align:left">Item Description</th>
+  <th style="border:1px solid #000;padding:6px 8px;text-align:left;width:260px">Item Description</th>
   <th style="border:1px solid #000;padding:6px 8px;text-align:right;width:58px">CTN</th>
   <th style="border:1px solid #000;padding:6px 8px;text-align:right;width:58px">Pcs</th>
   ${returnHeaderCell}
